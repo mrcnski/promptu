@@ -64,7 +64,7 @@
     (:key "c" :desc "commit"         :text "commit")
     (:key "t" :desc "add tests"      :text "add tests")
     (:key "p" :desc "push"           :text "push when done" :negative "don't push")
-    (:key "P" :desc "create a PR"    :text "push when done")
+    (:key "P" :desc "create a PR"    :text "create a PR")
     (:key "C" :desc "check CI"       :text "check CI"))
   "Building blocks available in the `promptu' menu.
 
@@ -168,13 +168,17 @@ Oldest first; the most recently added block is last.")
 (defun promptu--add (block)
   "Resolve BLOCK and append its text to the session.
 Prompts the minibuffer for any :placeholders, substitutes them, applies
-negation when `promptu--negate-next' is armed, then resets that flag."
-  (let* ((placeholders (plist-get block :placeholders))
+negation when `promptu--negate-next' is armed, then resets that flag.
+Placeholder prompting is skipped when the block resolves to explicit
+:negative text, since the substituted affirmative text is then unused."
+  (let* ((negate promptu--negate-next)
+         (skip-prompts (and negate (plist-get block :negative)))
+         (placeholders (unless skip-prompts (plist-get block :placeholders)))
          (values (mapcar (lambda (name)
                            (cons name (read-string (format "%s: " name))))
                          placeholders))
          (affirmative (promptu--substitute (plist-get block :text) values))
-         (resolved (promptu--resolve block affirmative promptu--negate-next)))
+         (resolved (promptu--resolve block affirmative negate)))
     (setq promptu--session (append promptu--session (list resolved))
           promptu--negate-next nil)))
 
@@ -212,6 +216,10 @@ A no-op (no kill-ring change) when the session is empty."
   "Return non-nil when KEY is a reserved control key."
   (and (member key promptu--reserved-keys) t))
 
+(defun promptu--add-command-symbol (key)
+  "Return the interned command symbol for the block bound to KEY."
+  (intern (concat "promptu--add-" key)))
+
 (defun promptu--make-add-command (block)
   "Return an interactive command that adds BLOCK to the session."
   (lambda ()
@@ -234,19 +242,24 @@ A block with no :placeholders returns its :desc unchanged."
 (defun promptu--block-suffixes (_)
   "Build transient suffixes from `promptu-blocks'.
 One stay-open suffix per block; blocks whose key collides with a reserved
-key are skipped with a warning."
+key are skipped with a warning.  Each suffix gets an explicit command
+symbol keyed on its :key, so blocks sharing a :desc do not collide on a
+description-derived command symbol."
   (transient-parse-suffixes
    'promptu
    (let (specs)
      (dolist (block promptu-blocks)
        (let ((key (plist-get block :key)))
          (if (promptu--reserved-key-p key)
-             (warn "promptu: block key %S collides with a reserved key; skipping" key)
-           (push (list key
-                       (promptu--block-description block)
-                       (promptu--make-add-command block)
-                       :transient t)
-                 specs))))
+             (lwarn 'promptu :warning
+                    "block key %S collides with a reserved key; skipping" key)
+           (let ((command (promptu--add-command-symbol key)))
+             (fset command (promptu--make-add-command block))
+             (push (list key
+                         (promptu--block-description block)
+                         command
+                         :transient t)
+                   specs)))))
      (nreverse specs))))
 
 (defun promptu--preview ()

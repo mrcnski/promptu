@@ -115,6 +115,18 @@
    (should (equal promptu--session '("don't push when done")))
    (should (null promptu--negate-next))))
 
+(ert-deftest promptu-add-negated-with-explicit-negative-skips-prompt ()
+  "A negated block with :negative must not prompt for placeholders."
+  (promptu-test--with-session
+   (setq promptu--negate-next t)
+   (cl-letf (((symbol-function 'read-string)
+              (lambda (&rest _) (error "should not prompt when :negative applies"))))
+     (promptu--add '(:text "investigate {link}"
+                     :placeholders ("link")
+                     :negative "skip it")))
+   (should (equal promptu--session '("skip it")))
+   (should (null promptu--negate-next))))
+
 (ert-deftest promptu-add-placeholder-substitutes ()
   (promptu-test--with-session
    (cl-letf (((symbol-function 'read-string)
@@ -199,6 +211,19 @@
                   (promptu--block-description
                    '(:desc "link" :placeholders ("from" "to"))))
                  "link <from> <to>")))
+
+(ert-deftest promptu-block-suffixes-unique-commands-per-key ()
+  "Blocks sharing a :desc must not collide; each key gets its own command."
+  (let ((promptu-blocks '((:key "a" :desc "dup" :text "FIRST")
+                          (:key "b" :desc "dup" :text "SECOND")))
+        (promptu--session nil)
+        (promptu--negate-next nil))
+    (promptu--block-suffixes nil) ; defines the per-key commands
+    (should (fboundp (promptu--add-command-symbol "a")))
+    (should (fboundp (promptu--add-command-symbol "b")))
+    (funcall (promptu--add-command-symbol "a"))
+    (funcall (promptu--add-command-symbol "b"))
+    (should (equal promptu--session '("FIRST" "SECOND")))))
 
 (ert-deftest promptu-reserved-key-p ()
   (should (promptu--reserved-key-p "-"))
