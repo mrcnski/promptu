@@ -105,6 +105,11 @@ Used only when a negated block does not define explicit :negative text."
   :type 'string
   :group 'promptu)
 
+(defface promptu-preview-face
+  '((t :inherit font-lock-doc-face))
+  "Face for the composed-prompt preview shown at the bottom of the menu."
+  :group 'promptu)
+
 ;;; Pure compose core
 
 (defun promptu--substitute (text values)
@@ -226,18 +231,20 @@ key are skipped with a warning."
      (nreverse specs))))
 
 (defun promptu--preview ()
-  "Render the live preview heading for the menu."
+  "Render the live preview block shown at the bottom of the menu."
   (concat
+   (propertize "Preview" 'face 'transient-heading)
    (when promptu--negate-next
-     (propertize "negate next: ON\n" 'face 'warning))
+     (concat "  " (propertize "[negate next]" 'face 'warning)))
+   "\n"
    (if promptu--session
-       (promptu--compose promptu--session)
-     "(empty -- pick blocks below)")))
+       (propertize (promptu--compose promptu--session) 'face 'promptu-preview-face)
+     (propertize "(empty -- pick blocks below)" 'face 'shadow))))
 
 ;;;###autoload
 (transient-define-prefix promptu ()
   "Compose an LLM prompt from building blocks."
-  [:description promptu--preview
+  ["Blocks"
    :class transient-column
    :setup-children promptu--block-suffixes]
   ["Controls"
@@ -245,6 +252,7 @@ key are skipped with a warning."
    ("DEL" "remove last"   promptu--remove-last   :transient t)
    ("RET" "finish (copy)" promptu--finish)
    ("q"   "abort"         transient-quit-one)]
+  [:description promptu--preview]
   (interactive)
   (promptu--reset)
   (transient-setup 'promptu))
