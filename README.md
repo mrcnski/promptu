@@ -1,5 +1,9 @@
 # promptu
 
+<p align="center">
+  <img src="mascot.svg" alt="promptu mascot — a friendly creature built from stacked prompt blocks" width="180">
+</p>
+
 Compose LLM prompts from building blocks — a small Emacs package with a
 [transient](https://github.com/magit/transient) menu that builds a prompt
 incrementally and copies it to the kill ring.

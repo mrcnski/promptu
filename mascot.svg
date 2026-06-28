@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 214" width="200" height="214" role="img" aria-label="promptu mascot: a friendly creature built from stacked prompt blocks">
+  <title>promptu</title>
+
+  <!-- ground shadow -->
+  <ellipse cx="100" cy="196" rx="62" ry="7" fill="#000000" opacity="0.06"/>
+
+  <!-- bottom block (violet) -->
+  <g>
+    <rect x="44" y="142" width="112" height="48" rx="16" fill="#9B8CFF"/>
+    <circle cx="60" cy="166" r="4" fill="#ffffff" opacity="0.9"/>
+    <rect x="74" y="156" width="60" height="8" rx="4" fill="#ffffff" opacity="0.9"/>
+    <rect x="74" y="170" width="38" height="8" rx="4" fill="#ffffff" opacity="0.6"/>
+    <!-- prompt caret -->
+    <rect x="118" y="168" width="4" height="12" rx="1.5" fill="#ffffff"/>
+  </g>
+
+  <!-- middle block (amber) -->
+  <g>
+    <rect x="32" y="86" width="136" height="48" rx="16" fill="#F2B441"/>
+    <circle cx="48" cy="110" r="4" fill="#ffffff" opacity="0.9"/>
+    <rect x="62" y="100" width="86" height="8" rx="4" fill="#ffffff" opacity="0.9"/>
+    <rect x="62" y="114" width="62" height="8" rx="4" fill="#ffffff" opacity="0.6"/>
+  </g>
+
+  <!-- head block (teal) with face -->
+  <g>
+    <rect x="40" y="24" width="120" height="54" rx="16" fill="#5BC8AF"/>
+    <!-- eyes -->
+    <circle cx="80" cy="48" r="8" fill="#ffffff"/>
+    <circle cx="82" cy="49" r="4" fill="#2b2b3a"/>
+    <circle cx="120" cy="48" r="8" fill="#ffffff"/>
+    <circle cx="122" cy="49" r="4" fill="#2b2b3a"/>
+    <!-- cheeks -->
+    <circle cx="66" cy="60" r="4" fill="#ffffff" opacity="0.25"/>
+    <circle cx="134" cy="60" r="4" fill="#ffffff" opacity="0.25"/>
+    <!-- smile -->
+    <path d="M88 60 Q100 71 112 60" fill="none" stroke="#2b2b3a" stroke-width="3" stroke-linecap="round"/>
+    <!-- antenna with a little bullet -->
+    <line x1="100" y1="24" x2="100" y2="12" stroke="#5BC8AF" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="100" cy="9" r="4" fill="#F2B441"/>
+  </g>
+
+  <!-- wordmark -->
+  <text x="100" y="210" text-anchor="middle"
+        font-family="-apple-system, 'Helvetica Neue', Arial, sans-serif"
+        font-size="18" font-weight="700" letter-spacing="0.5" fill="#2b2b3a">promptu</text>
+</svg>
