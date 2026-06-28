@@ -110,6 +110,11 @@ Used only when a negated block does not define explicit :negative text."
   "Face for the composed-prompt preview shown at the bottom of the menu."
   :group 'promptu)
 
+(defface promptu-placeholder-face
+  '((t :inherit font-lock-variable-name-face))
+  "Face for placeholder hints (e.g. <link>) shown in block descriptions."
+  :group 'promptu)
+
 ;;; Pure compose core
 
 (defun promptu--substitute (text values)
@@ -212,6 +217,19 @@ A no-op (no kill-ring change) when the session is empty."
     (interactive)
     (promptu--add block)))
 
+(defun promptu--block-description (block)
+  "Return BLOCK's menu description with faced <placeholder> hints appended.
+A block with no :placeholders returns its :desc unchanged."
+  (let ((desc (plist-get block :desc))
+        (placeholders (plist-get block :placeholders)))
+    (if placeholders
+        (concat desc " "
+                (mapconcat (lambda (name)
+                             (propertize (format "<%s>" name)
+                                         'face 'promptu-placeholder-face))
+                           placeholders " "))
+      desc)))
+
 (defun promptu--block-suffixes (_)
   "Build transient suffixes from `promptu-blocks'.
 One stay-open suffix per block; blocks whose key collides with a reserved
@@ -224,7 +242,7 @@ key are skipped with a warning."
          (if (promptu--reserved-key-p key)
              (warn "promptu: block key %S collides with a reserved key; skipping" key)
            (push (list key
-                       (plist-get block :desc)
+                       (promptu--block-description block)
                        (promptu--make-add-command block)
                        :transient t)
                  specs))))

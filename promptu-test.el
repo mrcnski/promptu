@@ -180,6 +180,26 @@
 
 ;;; Reserved-key collision guard (KTD6)
 
+;;; Block description with placeholder hints
+
+(ert-deftest promptu-block-description-no-placeholders ()
+  (should (equal (promptu--block-description '(:desc "commit"))
+                 "commit")))
+
+(ert-deftest promptu-block-description-appends-placeholder-hint ()
+  (let ((desc (promptu--block-description
+               '(:desc "investigate" :placeholders ("link")))))
+    (should (equal (substring-no-properties desc) "investigate <link>"))
+    ;; the <link> hint carries the placeholder face
+    (should (eq (get-text-property (string-search "<" desc) 'face desc)
+                'promptu-placeholder-face))))
+
+(ert-deftest promptu-block-description-multiple-placeholders ()
+  (should (equal (substring-no-properties
+                  (promptu--block-description
+                   '(:desc "link" :placeholders ("from" "to"))))
+                 "link <from> <to>")))
+
 (ert-deftest promptu-reserved-key-p ()
   (should (promptu--reserved-key-p "-"))
   (should (promptu--reserved-key-p "RET"))
