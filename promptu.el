@@ -58,13 +58,14 @@
   :prefix "promptu-")
 
 (defcustom promptu-blocks
-  '((:key "r" :desc "review"        :text "review your changes")
-    (:key "c" :desc "commit"        :text "commit")
-    (:key "t" :desc "add tests"     :text "add tests" :negative "skip the tests")
-    (:key "p" :desc "push"          :text "push when done")
-    (:key "k" :desc "check CI"      :text "check CI")
-    (:key "b" :desc "create branch" :text "create a branch")
-    (:key "i" :desc "investigate"   :text "investigate {link}" :placeholders ("link")))
+  '((:key "i" :desc "investigate"    :text "investigate {link}" :placeholders ("link"))
+    (:key "b" :desc "create branch"  :text "create a branch")
+    (:key "r" :desc "review changes" :text "review your changes")
+    (:key "c" :desc "commit"         :text "commit")
+    (:key "t" :desc "add tests"      :text "add tests")
+    (:key "p" :desc "push"           :text "push when done" :negative "don't push")
+    (:key "P" :desc "create a PR"    :text "push when done")
+    (:key "C" :desc "check CI"       :text "check CI"))
   "Building blocks available in the `promptu' menu.
 
 Each block is a plist with these keys:
