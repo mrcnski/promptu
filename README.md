@@ -4,11 +4,11 @@
   <img src="mascot.svg" alt="promptu mascot — a friendly creature built from stacked prompt blocks" width="180">
 </p>
 
-Compose LLM prompts from building blocks — a small Emacs package with a
+Compose LLM prompts from building blocks. A small Emacs package with a
 [transient](https://github.com/magit/transient) menu that builds a prompt
-incrementally and copies it to the kill ring.
+incrementally.
 
-*The opposite of impromptu: composed, not off-the-cuff.*
+*Promptu: the opposite of 'impromptu': composed, not off-the-cuff.*
 
 ## Usage
 
