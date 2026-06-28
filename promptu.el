@@ -239,7 +239,7 @@ key are skipped with a warning."
    "\n"
    (if promptu--session
        (propertize (promptu--compose promptu--session) 'face 'promptu-preview-face)
-     (propertize "(empty -- pick blocks below)" 'face 'shadow))))
+     (propertize "(empty -- pick blocks above)" 'face 'shadow))))
 
 ;;;###autoload
 (transient-define-prefix promptu ()
@@ -248,11 +248,11 @@ key are skipped with a warning."
    :class transient-column
    :setup-children promptu--block-suffixes]
   ["Controls"
-   ("-"   "negate next"   promptu--toggle-negate :transient t)
-   ("DEL" "remove last"   promptu--remove-last   :transient t)
-   ("RET" "finish (copy)" promptu--finish)
-   ("q"   "abort"         transient-quit-one)]
-  [:description promptu--preview]
+   ("-"   "negate next" promptu--toggle-negate :transient t)
+   ("DEL" "remove last" promptu--remove-last   :transient t)
+   ("q"   "abort"       transient-quit-one)]
+  [:description promptu--preview
+   ("RET" "finish (copy)" promptu--finish)]
   (interactive)
   (promptu--reset)
   (transient-setup 'promptu))
