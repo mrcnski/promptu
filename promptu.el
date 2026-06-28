@@ -4,7 +4,7 @@
 
 ;; Author: Marcin Swieczkowski
 ;; Version: 0.1.0
-;; Package-Requires: ((emacs "28.1") (transient "0.3.0"))
+;; Package-Requires: ((emacs "28.1") (transient "0.4.0"))
 ;; Keywords: convenience, tools
 ;; URL: https://github.com/mrcnski/promptu
 
