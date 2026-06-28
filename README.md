@@ -86,6 +86,11 @@ Clone and load:
 
 Emacs 28.1+ and `transient`. Nothing else.
 
+## Related
+
+- [context-clues](https://github.com/mrcnski/context-clues) — a sibling
+  transient menu for copying file, buffer, and code context to the kill ring.
+
 ## License
 
 GPL-3.0-or-later.
