@@ -237,16 +237,18 @@ A no-op (no kill-ring change) when the session is empty."
 
 (defun promptu--block-description (block)
   "Return BLOCK's menu description with faced <placeholder> hints appended.
-A block with no :placeholders returns its :desc unchanged."
-  (let ((desc (plist-get block :desc))
-        (placeholders (plist-get block :placeholders)))
-    (if placeholders
-        (concat desc " "
-                (mapconcat (lambda (name)
-                             (propertize (format "<%s>" name)
-                                         'face 'promptu-placeholder-face))
-                           placeholders " "))
-      desc)))
+A block with no :placeholders returns its :desc unchanged.  When :desc is
+empty, the hints stand alone with no leading space."
+  (let* ((desc (or (plist-get block :desc) ""))
+         (placeholders (plist-get block :placeholders))
+         (hints (and placeholders
+                     (mapconcat (lambda (name)
+                                  (propertize (format "<%s>" name)
+                                              'face 'promptu-placeholder-face))
+                                placeholders " "))))
+    (cond ((not hints) desc)
+          ((string-empty-p desc) hints)
+          (t (concat desc " " hints)))))
 
 (defun promptu--block-suffixes (_)
   "Build transient suffixes from `promptu-blocks'.

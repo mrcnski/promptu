@@ -222,6 +222,12 @@
     (should (eq (get-text-property (string-search "<" desc) 'face desc)
                 'promptu-placeholder-face))))
 
+(ert-deftest promptu-block-description-empty-desc-no-leading-space ()
+  (should (equal (substring-no-properties
+                  (promptu--block-description
+                   '(:desc "" :placeholders ("type a command"))))
+                 "<type a command>")))
+
 (ert-deftest promptu-block-description-multiple-placeholders ()
   (should (equal (substring-no-properties
                   (promptu--block-description
