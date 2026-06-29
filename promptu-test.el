@@ -22,25 +22,23 @@
 (ert-deftest promptu-resolve-negated-without-explicit-negative ()
   "Covers AE1: negated block with no :negative gets the default prefix."
   (let ((promptu-negation-prefix "don't "))
-    (should (equal (promptu--resolve '(:key "p" :text "push when done")
-                                     "push when done" t)
+    (should (equal (promptu--resolve '(:key "p" :text "push when done") t)
                    "don't push when done"))))
 
 (ert-deftest promptu-resolve-negated-with-explicit-negative ()
-  "Covers AE1: negated block with :negative emits that text verbatim."
+  "Covers AE1: negated block with :negative returns that template."
   (should (equal (promptu--resolve '(:key "t" :text "add tests"
                                      :negative "skip the tests")
-                                   "add tests" t)
+                                   t)
                  "skip the tests")))
 
 (ert-deftest promptu-resolve-not-negated-returns-affirmative ()
-  (should (equal (promptu--resolve '(:key "p" :text "push when done")
-                                   "push when done" nil)
+  (should (equal (promptu--resolve '(:key "p" :text "push when done") nil)
                  "push when done")))
 
 (ert-deftest promptu-resolve-negation-prefix-configurable ()
   (let ((promptu-negation-prefix "do not "))
-    (should (equal (promptu--resolve '(:text "push") "push" t)
+    (should (equal (promptu--resolve '(:text "push") t)
                    "do not push"))))
 
 ;;; promptu--substitute (R4, AE2)
@@ -116,16 +114,34 @@
    (should (null promptu--negate-next))))
 
 (ert-deftest promptu-add-negated-with-explicit-negative-skips-prompt ()
-  "A negated block with :negative must not prompt for placeholders."
+  "A negated block whose :negative has no placeholder must not prompt."
   (promptu-test--with-session
    (setq promptu--negate-next t)
    (cl-letf (((symbol-function 'read-string)
-              (lambda (&rest _) (error "should not prompt when :negative applies"))))
+              (lambda (&rest _) (error "should not prompt when no token present"))))
      (promptu--add '(:text "investigate {link}"
                      :placeholders ("link")
                      :negative "skip it")))
    (should (equal promptu--session '("skip it")))
    (should (null promptu--negate-next))))
+
+(ert-deftest promptu-add-negative-with-placeholder-substitutes ()
+  "A placeholder inside :negative is prompted for and substituted."
+  (promptu-test--with-session
+   (setq promptu--negate-next t)
+   (cl-letf (((symbol-function 'read-string) (lambda (&rest _) "PR-7")))
+     (promptu--add '(:text "review {pr}"
+                     :placeholders ("pr")
+                     :negative "ignore {pr}")))
+   (should (equal promptu--session '("ignore PR-7")))))
+
+(ert-deftest promptu-add-negated-default-prefix-substitutes-text-placeholder ()
+  "A negated block with no :negative substitutes the {token} in :text."
+  (promptu-test--with-session
+   (setq promptu--negate-next t)
+   (cl-letf (((symbol-function 'read-string) (lambda (&rest _) "X")))
+     (promptu--add '(:text "investigate {link}" :placeholders ("link"))))
+   (should (equal promptu--session '("don't investigate X")))))
 
 (ert-deftest promptu-add-placeholder-substitutes ()
   (promptu-test--with-session

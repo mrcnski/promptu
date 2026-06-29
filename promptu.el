@@ -77,11 +77,13 @@ Each block is a plist with these keys:
                 May contain named placeholders written as {name}.
   :negative     optional string, the text emitted when the block is
                 negated.  When absent, a negated block emits :text
-                prefixed with `promptu-negation-prefix'.
-  :placeholders optional list of placeholder names (strings).  When
-                present, the user is prompted in the minibuffer for each
-                value, which is substituted for the matching {name} in
-                :text before the block joins the prompt."
+                prefixed with `promptu-negation-prefix'.  May contain
+                {name} placeholders, like :text.
+  :placeholders optional list of placeholder names (strings).  The user
+                is prompted in the minibuffer for each placeholder that
+                appears as {name} in the emitted text (whether that is
+                :text or :negative), and the value is substituted in
+                before the block joins the prompt."
   :type '(repeat
           (plist :options ((:key string)
                            (:desc string)
@@ -126,15 +128,17 @@ string; each occurrence of {NAME} in TEXT is replaced with VALUE."
     (dolist (pair values result)
       (setq result (string-replace (format "{%s}" (car pair)) (cdr pair) result)))))
 
-(defun promptu--resolve (block affirmative negated)
-  "Return the text BLOCK emits given its substituted AFFIRMATIVE text.
-When NEGATED is non-nil, emit BLOCK's :negative text if defined, else
-AFFIRMATIVE prefixed with `promptu-negation-prefix'.  When NEGATED is
-nil, emit AFFIRMATIVE unchanged."
-  (if negated
-      (or (plist-get block :negative)
-          (concat promptu-negation-prefix affirmative))
-    affirmative))
+(defun promptu--resolve (block negated)
+  "Return BLOCK's emitted template before placeholder substitution.
+When NEGATED is non-nil, return BLOCK's :negative text if defined, else
+its :text prefixed with `promptu-negation-prefix'.  When NEGATED is nil,
+return BLOCK's :text.  Either template may still contain {name}
+placeholders, which the caller substitutes."
+  (let ((text (plist-get block :text)))
+    (if negated
+        (or (plist-get block :negative)
+            (concat promptu-negation-prefix text))
+      text)))
 
 (defun promptu--line-prefix (separator)
   "Return the text following the last newline in SEPARATOR, or \"\" if none."
@@ -165,20 +169,25 @@ Oldest first; the most recently added block is last.")
   (setq promptu--session nil
         promptu--negate-next nil))
 
+(defun promptu--placeholder-values (template placeholders)
+  "Prompt the minibuffer for each of PLACEHOLDERS that occurs in TEMPLATE.
+Returns an alist of (NAME . VALUE).  A placeholder not present as {name}
+in TEMPLATE is not prompted for."
+  (delq nil
+        (mapcar (lambda (name)
+                  (when (string-search (format "{%s}" name) template)
+                    (cons name (read-string (format "%s: " name)))))
+                placeholders)))
+
 (defun promptu--add (block)
-  "Resolve BLOCK and append its text to the session.
-Prompts the minibuffer for any :placeholders, substitutes them, applies
-negation when `promptu--negate-next' is armed, then resets that flag.
-Placeholder prompting is skipped when the block resolves to explicit
-:negative text, since the substituted affirmative text is then unused."
+  "Resolve BLOCK and append its emitted text to the session.
+Picks the affirmative or :negative template per `promptu--negate-next',
+prompts only for placeholders that appear in that template, substitutes
+them, then resets the negate flag."
   (let* ((negate promptu--negate-next)
-         (skip-prompts (and negate (plist-get block :negative)))
-         (placeholders (unless skip-prompts (plist-get block :placeholders)))
-         (values (mapcar (lambda (name)
-                           (cons name (read-string (format "%s: " name))))
-                         placeholders))
-         (affirmative (promptu--substitute (plist-get block :text) values))
-         (resolved (promptu--resolve block affirmative negate)))
+         (template (promptu--resolve block negate))
+         (values (promptu--placeholder-values template (plist-get block :placeholders)))
+         (resolved (promptu--substitute template values)))
     (setq promptu--session (append promptu--session (list resolved))
           promptu--negate-next nil)))
 
