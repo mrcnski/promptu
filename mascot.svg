@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 214" width="200" height="214" role="img" aria-label="promptu mascot: a friendly creature built from stacked prompt blocks">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 206" width="200" height="206" role="img" aria-label="promptu mascot: a friendly creature built from stacked prompt blocks">
   <title>promptu</title>
 
   <!-- ground shadow -->
@@ -39,9 +39,4 @@
     <line x1="100" y1="24" x2="100" y2="12" stroke="#5BC8AF" stroke-width="3" stroke-linecap="round"/>
     <circle cx="100" cy="9" r="4" fill="#F2B441"/>
   </g>
-
-  <!-- wordmark -->
-  <text x="100" y="210" text-anchor="middle"
-        font-family="-apple-system, 'Helvetica Neue', Arial, sans-serif"
-        font-size="18" font-weight="700" letter-spacing="0.5" fill="#2b2b3a">promptu</text>
 </svg>
