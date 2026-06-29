@@ -26,7 +26,7 @@
 ;;; Commentary:
 
 ;; promptu provides a transient menu that composes an LLM prompt from
-;; user-customizable building blocks, copying the result to the kill ring.
+;; user-customizable building blocks.
 ;;
 ;; The opposite of impromptu: composed, not off-the-cuff.
 ;;

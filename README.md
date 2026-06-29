@@ -8,7 +8,7 @@ Compose LLM prompts from building blocks. A small Emacs package with a
 [transient](https://github.com/magit/transient) menu that builds a prompt
 incrementally.
 
-*Promptu: the opposite of 'impromptu': composed, not off-the-cuff.*
+*promptu: the opposite of 'impromptu': composed, not off-the-cuff.*
 
 ## Usage
 
@@ -58,18 +58,18 @@ default separator) a bulleted list:
 
 Each block is a plist:
 
-- `:key` — the transient trigger key (avoid the reserved keys `-`, `RET`, `DEL`, `q`).
-- `:desc` — the short menu description.
-- `:text` — the affirmative text; may contain named placeholders as `{name}`.
-- `:negative` — optional text emitted when the block is negated.
-- `:placeholders` — optional list of placeholder names prompted for on add.
+- `:key`: the transient trigger key (avoid the reserved keys `-`, `RET`, `DEL`, `q`).
+- `:desc`: the short menu description.
+- `:text`: the affirmative text; may contain named placeholders as `{name}`.
+- `:negative`: optional text emitted when the block is negated.
+- `:placeholders`: optional list of placeholder names prompted for on add.
 
 Other options:
 
-- `promptu-separator` (default `"\n- "`) — placed between blocks. When it
+- `promptu-separator` (default `"\n- "`): placed between blocks. When it
   contains a newline, its trailing line prefix is also applied to the first
   block, so the default produces a fully bulleted list.
-- `promptu-negation-prefix` (default `"don't "`) — used for negated blocks
+- `promptu-negation-prefix` (default `"don't "`): used for negated blocks
   with no explicit `:negative` text.
 
 ## Installation
@@ -88,7 +88,7 @@ Emacs 28.1+ and `transient`. Nothing else.
 
 ## Related
 
-- [context-clues](https://github.com/mrcnski/context-clues) — a sibling
+- [context-clues](https://github.com/mrcnski/context-clues): a sibling
   transient menu for copying file, buffer, and code context to the kill ring.
 
 ## License
