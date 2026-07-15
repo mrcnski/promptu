@@ -3,7 +3,9 @@ import SwiftUI
 
 struct ComposerView: View {
     @ObservedObject var session: Session
-    @Environment(\.dismiss) private var dismiss
+    /// Closes the hosting popover; injected because the view is hosted
+    /// in an NSPopover, outside any SwiftUI presentation context.
+    let close: () -> Void
     @FocusState private var keysFocused: Bool
     @FocusState private var fieldFocused: Bool
 
@@ -145,7 +147,7 @@ struct ComposerView: View {
 
         switch press.key {
         case .return:
-            if session.finish() { dismiss() }
+            if session.finish() { close() }
             return .handled
         case .upArrow:
             session.pointUp()
@@ -158,7 +160,7 @@ struct ComposerView: View {
             session.removeEntry()
             return .handled
         case .escape:
-            dismiss()
+            close()
             return .handled
         default:
             break

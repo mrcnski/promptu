@@ -3,9 +3,14 @@
 A macOS menubar companion to [promptu](https://github.com/mrcnski/promptu):
 compose LLM prompts from building blocks, from any app, no Emacs required.
 
-Click the menubar icon (or tab to it), press block keys to build the prompt
-while watching the live preview, then press `RET` — the composed prompt lands
-on the clipboard, ready to paste into any agent.
+Press `⌥⌘P` from any app (or click the menubar icon), press block keys to
+build the prompt while watching the live preview, then press `RET` — the
+composed prompt lands on the clipboard and focus returns to where you were,
+ready to paste.
+
+The hotkey is a constant in `AppDelegate.swift` (`hotKeyCode` /
+`hotKeyModifiers`); it overrides the same combination in whatever app is
+focused, so pick one nothing else needs.
 
 ## Blocks
 
@@ -36,6 +41,7 @@ re-read on app restart.
 | `⌘Z` / `⇧⌘Z`   | Undo / redo                                        |
 | `RET`          | Copy the composed prompt, close the panel          |
 | `ESC`          | Close the panel (prompt is kept)                   |
+| `⌥⌘P`          | Summon the panel from anywhere (global)            |
 | `⌘Q`           | Quit                                               |
 
 ## Build
@@ -59,7 +65,6 @@ add Promptu.
 - History (`M-p` / `M-n` / `M-r`)
 - Whole-prompt free-text editing (`M-E`)
 - Custom `promptu-separator` / negation prefix (fixed at `"\n- "` / `"don't "`)
-- A global hotkey to summon the panel without touching the menubar
 
 ## License
 
