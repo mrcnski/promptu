@@ -26,14 +26,17 @@ re-read on app restart.
 
 ## Keys
 
-| Key       | Action                                    |
-|-----------|-------------------------------------------|
-| _block_   | Add that block to the prompt              |
-| `-`       | The next block added is negated           |
-| `⌫`       | Remove the last entry                     |
-| `RET`     | Copy the composed prompt, close the panel |
-| `ESC`     | Close the panel (prompt is kept)          |
-| `⌘Q`      | Quit                                      |
+| Key            | Action                                             |
+|----------------|----------------------------------------------------|
+| _block_        | Add that block at the point                        |
+| `-`            | The next block added is negated                    |
+| `⌫`            | Remove the entry above the point (or the last one) |
+| `↑`/`↓` (or `C-p`/`C-n`) | Move the point, shown as `▮` in the preview |
+| `⌘E`           | Edit the entry above the point (or the last one)   |
+| `⌘Z` / `⇧⌘Z`   | Undo / redo                                        |
+| `RET`          | Copy the composed prompt, close the panel          |
+| `ESC`          | Close the panel (prompt is kept)                   |
+| `⌘Q`           | Quit                                               |
 
 ## Build
 
@@ -44,13 +47,16 @@ make app       # build dist/Promptu.app (ad-hoc signed)
 make install   # copy it to /Applications
 ```
 
-Requires macOS 14+ and a Swift 6 toolchain (Xcode 16+). To start at login:
-System Settings → General → Login Items, add Promptu.
+Requires macOS 14+ and a Swift 6 toolchain (Xcode 16+).
+
+After quitting, relaunch with `open dist/Promptu.app` from the checkout, or —
+once `make install` has run — launch "Promptu" from Spotlight or
+/Applications. To start at login: System Settings → General → Login Items,
+add Promptu.
 
 ## Not (yet) ported from Emacs promptu
 
-- History (`M-p` / `M-n` / `M-r`), undo/redo
-- Point navigation and editing entries mid-prompt
+- History (`M-p` / `M-n` / `M-r`)
 - Whole-prompt free-text editing (`M-E`)
 - Custom `promptu-separator` / negation prefix (fixed at `"\n- "` / `"don't "`)
 - A global hotkey to summon the panel without touching the menubar

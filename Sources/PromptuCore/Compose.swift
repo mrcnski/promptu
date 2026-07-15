@@ -23,17 +23,18 @@ public enum Compose {
         return (block.placeholders ?? []).filter { template.contains("{\($0)}") }
     }
 
+    /// The separator's trailing line prefix: the text after its last
+    /// newline, or "" for a separator without one.
+    public static func linePrefix(_ separator: String = separator) -> String {
+        guard let newline = separator.lastIndex(of: "\n") else { return "" }
+        return String(separator[separator.index(after: newline)...])
+    }
+
     /// Join entries with the separator.  When the separator contains a
     /// newline, the text after its last newline also prefixes the first
     /// entry, so the default "\n- " yields a fully bulleted list.
     public static func compose(_ entries: [String], separator: String = separator) -> String {
         guard !entries.isEmpty else { return "" }
-        let prefix =
-            if let newline = separator.lastIndex(of: "\n") {
-                String(separator[separator.index(after: newline)...])
-            } else {
-                ""
-            }
-        return prefix + entries.joined(separator: separator)
+        return linePrefix(separator) + entries.joined(separator: separator)
     }
 }

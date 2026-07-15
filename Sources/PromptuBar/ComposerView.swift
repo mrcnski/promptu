@@ -7,14 +7,18 @@ struct ComposerView: View {
     @FocusState private var keysFocused: Bool
     @FocusState private var fieldFocused: Bool
 
+    private var fieldShown: Bool { session.pending != nil || session.editInput != nil }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             preview
             Divider()
             if let error = session.loadError {
                 Text(error).foregroundStyle(.red).font(.caption)
+            } else if session.editInput != nil {
+                editField
             } else if session.pending != nil {
-                placeholderPrompt
+                placeholderField
             } else {
                 blockGrid
             }
@@ -28,16 +32,16 @@ struct ComposerView: View {
         .focused($keysFocused)
         .onKeyPress(phases: .down) { handleKey($0) }
         .onAppear { keysFocused = true }
-        .onChange(of: session.pending == nil) { _, noPending in
-            if noPending { keysFocused = true } else { fieldFocused = true }
+        .onChange(of: fieldShown) { _, shown in
+            if shown { fieldFocused = true } else { keysFocused = true }
         }
     }
 
     private var preview: some View {
         ScrollView {
-            Text(session.entries.isEmpty ? "empty prompt" : session.composed)
+            Text(session.isEmpty ? "empty prompt" : session.preview)
                 .font(.system(.body, design: .monospaced))
-                .foregroundStyle(session.entries.isEmpty ? .secondary : .primary)
+                .foregroundStyle(session.isEmpty ? .secondary : .primary)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -67,7 +71,7 @@ struct ComposerView: View {
         }
     }
 
-    private var placeholderPrompt: some View {
+    private var placeholderField: some View {
         TextField(
             session.pending?.currentName ?? "",
             text: Binding(
@@ -81,6 +85,20 @@ struct ComposerView: View {
         .onExitCommand { session.cancelPending() }
     }
 
+    private var editField: some View {
+        TextField(
+            "edit entry",
+            text: Binding(
+                get: { session.editInput ?? "" },
+                set: { session.editInput = $0 }
+            )
+        )
+        .textFieldStyle(.roundedBorder)
+        .focused($fieldFocused)
+        .onSubmit { session.submitEdit() }
+        .onExitCommand { session.cancelEdit() }
+    }
+
     private var footer: some View {
         HStack(spacing: 8) {
             if session.negateNext {
@@ -88,7 +106,7 @@ struct ComposerView: View {
                     .font(.caption.bold())
                     .foregroundStyle(.orange)
             } else {
-                Text("- negate   ⌫ remove   ⏎ copy")
+                Text("- negate   ⌫ remove   ↑↓ point   ⌘E edit   ⌘Z undo   ⏎ copy")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -102,17 +120,42 @@ struct ComposerView: View {
     }
 
     private func handleKey(_ press: KeyPress) -> KeyPress.Result {
-        guard session.pending == nil else { return .ignored }
+        guard !fieldShown else { return .ignored }
+
+        if press.modifiers.contains(.command) {
+            switch press.key.character {
+            case "e":
+                session.beginEdit()
+                return .handled
+            case "z":
+                press.modifiers.contains(.shift) ? session.redo() : session.undo()
+                return .handled
+            default:
+                return .ignored
+            }
+        }
+
+        if press.modifiers.contains(.control) {
+            switch press.key.character {
+            case "p": session.pointUp(); return .handled
+            case "n": session.pointDown(); return .handled
+            default: return .ignored
+            }
+        }
+
         switch press.key {
         case .return:
             if session.finish() { dismiss() }
             return .handled
-        case .delete:
-            session.removeLast()
+        case .upArrow:
+            session.pointUp()
+            return .handled
+        case .downArrow:
+            session.pointDown()
             return .handled
         // Backspace arrives as DEL (U+7F), not KeyEquivalent.delete (U+8).
-        case KeyEquivalent("\u{7F}"):
-            session.removeLast()
+        case .delete, KeyEquivalent("\u{7F}"):
+            session.removeEntry()
             return .handled
         case .escape:
             dismiss()
@@ -120,6 +163,7 @@ struct ComposerView: View {
         default:
             break
         }
+
         if press.characters == "-" {
             session.negateNext.toggle()
             return .handled
