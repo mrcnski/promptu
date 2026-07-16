@@ -243,7 +243,6 @@ struct ComposerView: View {
                 }
             }
             HStack {
-                Spacer()
                 Button { session.toggleSettings() } label: {
                     hint("⌘,", session.screen == .settings ? "compose" : "settings")
                 }
@@ -252,6 +251,7 @@ struct ComposerView: View {
                     hint("⌘B", session.screen == .editor ? "compose" : "block editor")
                 }
                 .buttonStyle(HoverButtonStyle(theme: theme))
+                Spacer()
                 Button { NSApp.terminate(nil) } label: { hint("⌘Q", "quit") }
                     .buttonStyle(HoverButtonStyle(theme: theme))
                     .keyboardShortcut("q", modifiers: .command)
