@@ -18,8 +18,10 @@ struct ComposerView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if session.editorShown {
+            if session.screen == .editor {
                 BlockEditorView(session: session, theme: theme, fieldFocused: $fieldFocused)
+            } else if session.screen == .settings {
+                SettingsView(theme: theme)
             } else if let error = session.loadError {
                 preview
                 Text(error).foregroundStyle(theme.error).font(.caption)
@@ -190,7 +192,7 @@ struct ComposerView: View {
 
     private var footer: some View {
         VStack(spacing: 8) {
-            if session.editorShown {
+            if session.screen == .editor {
                 HStack {
                     if session.draft == nil {
                         hintButton("esc", "back") { session.toggleEditor() }
@@ -204,6 +206,11 @@ struct ComposerView: View {
                         Button { session.cancelDraft() } label: { hint("esc", "cancel") }
                             .buttonStyle(HoverButtonStyle(theme: theme))
                     }
+                }
+            } else if session.screen == .settings {
+                HStack {
+                    hintButton("esc", "back") { session.toggleSettings() }
+                    Spacer()
                 }
             } else if session.negateNext {
                 HStack {
@@ -236,30 +243,18 @@ struct ComposerView: View {
                 }
             }
             HStack {
-                themeSelector
                 Spacer()
+                Button { session.toggleSettings() } label: {
+                    hint("⌘,", session.screen == .settings ? "compose" : "settings")
+                }
+                .buttonStyle(HoverButtonStyle(theme: theme))
                 Button { session.toggleEditor() } label: {
-                    hint("⌘B", session.editorShown ? "compose" : "block editor")
+                    hint("⌘B", session.screen == .editor ? "compose" : "block editor")
                 }
                 .buttonStyle(HoverButtonStyle(theme: theme))
                 Button { NSApp.terminate(nil) } label: { hint("⌘Q", "quit") }
                     .buttonStyle(HoverButtonStyle(theme: theme))
                     .keyboardShortcut("q", modifiers: .command)
-            }
-        }
-    }
-
-    /// The theme row: follow the system appearance, or pin one theme.
-    private var themeSelector: some View {
-        HStack(spacing: 2) {
-            Text("theme").font(.caption).foregroundStyle(theme.dimmed)
-            ForEach(ThemeChoice.allCases, id: \.self) { choice in
-                Button { themeChoice = choice } label: {
-                    Text(choice.rawValue)
-                        .font(choice == themeChoice ? .caption.bold() : .caption)
-                        .foregroundStyle(choice == themeChoice ? theme.key : theme.dimmed)
-                }
-                .buttonStyle(HoverButtonStyle(theme: theme, horizontalPadding: 3))
             }
         }
     }
@@ -277,22 +272,38 @@ struct ComposerView: View {
 
     private func handleKey(_ press: KeyPress) -> KeyPress.Result {
         guard !fieldShown else { return .ignored }
+        let command = press.modifiers.contains(.command)
 
-        // In the Block Editor's list, only "back" keys act; block keys
-        // must not add entries behind the editor.
-        if session.editorShown {
-            let commandB = press.modifiers.contains(.command) && press.key.character == "b"
-            if commandB || press.key == .escape {
+        // On the editor and settings screens only "back" keys act; block
+        // keys must not add entries behind them.
+        switch session.screen {
+        case .editor:
+            if press.key == .escape || (command && press.key.character == "b") {
                 session.toggleEditor()
                 return .handled
             }
             return .ignored
+        case .settings:
+            if press.key == .escape || (command && press.key.character == ",") {
+                session.toggleSettings()
+                return .handled
+            }
+            if command && press.key.character == "b" {
+                session.toggleEditor()
+                return .handled
+            }
+            return .ignored
+        case .composer:
+            break
         }
 
-        if press.modifiers.contains(.command) {
+        if command {
             switch press.key.character {
             case "b":
                 session.toggleEditor()
+                return .handled
+            case ",":
+                session.toggleSettings()
                 return .handled
             case "e":
                 session.beginEdit()

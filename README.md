@@ -12,7 +12,8 @@ Compose LLM prompts from building blocks, right from the menubar!
 
 ## Usage
 
-Press `⌥⌘P` from any app (or click the menubar icon) to open promptu.
+Press `⌥⌘P` (the default hotkey) from any app, or click the menubar icon,
+to open promptu.
 
 Press block keys to build the prompt while watching the live preview, then press
 `RET`.  The composed prompt lands on the clipboard and focus returns to where
@@ -21,6 +22,9 @@ you were, ready to paste.
 The panel follows the system appearance by default: [Catppuccin
 Latte](https://catppuccin.com) in light mode,
 [Nimbus](https://github.com/mrcnski/nimbus-theme) in dark mode.
+
+`⌘,` opens the settings screen, where the theme can be pinned and the
+global hotkey re-recorded; both choices are remembered.
 
 ## Blocks
 
@@ -58,8 +62,9 @@ texts), so Emacs promptu picks the changes up too.
 | `⌘Z` / `⇧⌘Z`   | Undo / redo                                        |
 | `RET`          | Copy the composed prompt, close the panel          |
 | `⌘B`           | Toggle the Block Editor                            |
+| `⌘,`           | Toggle settings (theme, hotkey)                    |
 | `ESC`          | Close the panel (prompt is kept)                   |
-| `⌥⌘P`          | Summon the panel from anywhere (global)            |
+| `⌥⌘P`          | Summon the panel from anywhere (global, default)   |
 | `⌘Q`           | Quit                                               |
 
 ## Install

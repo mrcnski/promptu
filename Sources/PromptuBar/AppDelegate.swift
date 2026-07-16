@@ -9,10 +9,6 @@ import SwiftUI
 /// hotkey needs.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    /// The global hotkey summoning the panel: ⌥⌘P.
-    private static let hotKeyCode = kVK_ANSI_P
-    private static let hotKeyModifiers = cmdKey | optionKey
-
     private var statusItem: NSStatusItem!
     private let popover = NSPopover()
     private var hotKey: HotKey?
@@ -38,7 +34,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hosting.sizingOptions = .preferredContentSize
         popover.contentViewController = hosting
 
-        hotKey = HotKey(keyCode: Self.hotKeyCode, modifiers: Self.hotKeyModifiers) {
+        registerHotKey()
+        NotificationCenter.default.addObserver(
+            forName: .hotKeyReload, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.registerHotKey() }
+        }
+        NotificationCenter.default.addObserver(
+            forName: .hotKeySuspend, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.hotKey = nil }
+        }
+    }
+
+    /// (Re)register the global hotkey from its saved setting; replacing
+    /// the HotKey unregisters the old combination via its deinit.
+    private func registerHotKey() {
+        let spec = HotKeySpec.load()
+        hotKey = HotKey(keyCode: spec.keyCode, modifiers: spec.modifiers) {
             [weak self] in self?.toggle()
         }
     }

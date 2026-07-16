@@ -34,9 +34,11 @@ final class Session: ObservableObject {
     @Published var pending: Pending?
     /// Text being edited for the entry above the point, nil when not editing.
     @Published var editInput: String?
-    /// Whether the popover shows the Block Editor instead of the composer.
-    @Published var editorShown = false
+    /// Which screen the popover shows.
+    @Published var screen = Screen.composer
     @Published var draft: Draft?
+
+    enum Screen { case composer, editor, settings }
 
     init() {
         do {
@@ -103,12 +105,20 @@ final class Session: ObservableObject {
         editInput = nil
     }
 
-    // MARK: - Block Editor
+    // MARK: - Screens
 
-    /// Entering or leaving the editor also drops any half-typed
-    /// placeholder or entry edit, so no hidden field keeps the focus.
     func toggleEditor() {
-        editorShown.toggle()
+        setScreen(screen == .editor ? .composer : .editor)
+    }
+
+    func toggleSettings() {
+        setScreen(screen == .settings ? .composer : .settings)
+    }
+
+    /// Switching screens also drops any half-typed placeholder or entry
+    /// edit, so no hidden field keeps the focus.
+    private func setScreen(_ new: Screen) {
+        screen = new
         draft = nil
         pending = nil
         editInput = nil
