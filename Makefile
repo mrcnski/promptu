@@ -1,8 +1,9 @@
 APP := Promptu.app
 BIN := .build/release/PromptuBar
 ICONSET := .build/AppIcon.iconset
+VERSION := $(shell /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Info.plist)
 
-.PHONY: app icon run test install clean
+.PHONY: app icon run test install zip clean
 
 app: icon
 	swift build -c release
@@ -28,6 +29,11 @@ test:
 install: app
 	rm -rf /Applications/$(APP)
 	cp -R dist/$(APP) /Applications/
+
+# Release artifact for GitHub Releases; ditto preserves the bundle
+# structure and signature the way Archive Utility expects.
+zip: app
+	ditto -c -k --keepParent dist/$(APP) dist/Promptu-$(VERSION).zip
 
 clean:
 	rm -rf .build dist

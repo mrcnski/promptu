@@ -62,6 +62,19 @@ texts), so Emacs promptu picks the changes up too.
 | `⌥⌘P`          | Summon the panel from anywhere (global)            |
 | `⌘Q`           | Quit                                               |
 
+## Install
+
+Download `Promptu-<version>.zip` from
+[Releases](https://github.com/mrcnski/promptu-app/releases), unzip, and
+drag Promptu.app into /Applications. The app is ad-hoc signed and not
+notarized, so macOS quarantines the download; clear the flag once:
+
+```sh
+xattr -d com.apple.quarantine /Applications/Promptu.app
+```
+
+Or build from source (below) — locally built apps need no blessing.
+
 ## Build
 
 ```sh
