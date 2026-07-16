@@ -92,6 +92,9 @@ struct ComposerView: View {
                             .foregroundStyle(theme.foreground)
                             .lineLimit(1)
                     }
+                    // Fill the grid cell, so the hover highlight spans
+                    // the whole column.
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(HoverButtonStyle(theme: theme))
             }
@@ -172,8 +175,8 @@ struct ComposerView: View {
 
             var body: some View {
                 configuration.label
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 1)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
                     .background(
                         hovering ? theme.hover : .clear,
                         in: RoundedRectangle(cornerRadius: 4))
