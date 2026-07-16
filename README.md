@@ -69,10 +69,18 @@ texts), so Emacs promptu picks the changes up too.
 
 ## Install
 
-Download `Promptu-<version>.zip` from
+With [Homebrew](https://brew.sh):
+
+```sh
+brew install --cask mrcnski/tap/promptu
+```
+
+Or download `Promptu-<version>.zip` from
 [Releases](https://github.com/mrcnski/promptu-app/releases), unzip, and
-drag Promptu.app into /Applications. The app is ad-hoc signed and not
-notarized, so macOS quarantines the download; clear the flag once:
+drag Promptu.app into /Applications.
+
+Either way, the app is ad-hoc signed and not notarized, so macOS
+quarantines the download; clear the flag once:
 
 ```sh
 xattr -d com.apple.quarantine /Applications/Promptu.app
@@ -101,8 +109,6 @@ add Promptu.
 - History
 - Whole-prompt free-text editing
 - Custom separator / negation prefix (fixed at `"\n- "` / `"don't "`)
-- Homebrew cask, once there are releases to point at (`brew install --cask`
-  from a personal tap; brew can also skip the quarantine flag)
 - Universal (Intel + Apple Silicon) release binaries — needs full Xcode
   for `swift build --arch arm64 --arch x86_64`; releases are currently
   Apple Silicon only
