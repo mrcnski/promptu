@@ -10,10 +10,13 @@ Compose LLM prompts from building blocks, right from the menubar!
 <img src="screenshot.png" alt="promptu menu showing blocks, controls, and a live preview" width="365">
 </div>
 
-Press `⌥⌘P` from any app (or click the menubar icon), press block keys to
-build the prompt while watching the live preview, then press `RET` — the
-composed prompt lands on the clipboard and focus returns to where you were,
-ready to paste.
+## Usage
+
+Press `⌥⌘P` from any app (or click the menubar icon) to open promptu.
+
+Press block keys to build the prompt while watching the live preview, then press
+`RET`.  The composed prompt lands on the clipboard and focus returns to where
+you were, ready to paste.
 
 The hotkey is a constant in `AppDelegate.swift` (`hotKeyCode` /
 `hotKeyModifiers`); it overrides the same combination in whatever app is
@@ -99,6 +102,8 @@ add Promptu.
 - History
 - Whole-prompt free-text editing
 - Custom separator / negation prefix (fixed at `"\n- "` / `"don't "`)
+- Homebrew cask, once there are releases to point at (`brew install --cask`
+  from a personal tap; brew can also skip the quarantine flag)
 
 ## See also
 
