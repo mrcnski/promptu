@@ -31,6 +31,20 @@ public enum Compose {
         return names.map { "<\($0)>" }.joined(separator: " ")
     }
 
+    /// The placeholder names appearing as {name} in the given texts, in
+    /// first-appearance order, or nil when there are none.  The Block
+    /// Editor derives a block's placeholders field from this.
+    public static func derivePlaceholders(text: String, negative: String? = nil) -> [String]? {
+        var names: [String] = []
+        for source in [text, negative].compactMap(\.self) {
+            for match in source.matches(of: /\{([^{}]+)\}/) {
+                let name = String(match.1)
+                if !names.contains(name) { names.append(name) }
+            }
+        }
+        return names.isEmpty ? nil : names
+    }
+
     /// The separator's trailing line prefix: the text after its last
     /// newline, or "" for a separator without one.
     public static func linePrefix(_ separator: String = separator) -> String {

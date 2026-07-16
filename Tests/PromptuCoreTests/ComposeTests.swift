@@ -63,6 +63,26 @@ import Testing
     #expect(Compose.placeholderHints(block) == "<a> <b>")
 }
 
+// MARK: - derivePlaceholders
+
+@Test func derivePlaceholdersFindsBraceNames() {
+    #expect(Compose.derivePlaceholders(text: "investigate {link}") == ["link"])
+}
+
+@Test func derivePlaceholdersNilWithoutBraces() {
+    #expect(Compose.derivePlaceholders(text: "commit") == nil)
+}
+
+@Test func derivePlaceholdersDedupsInFirstAppearanceOrder() {
+    #expect(Compose.derivePlaceholders(text: "{b} {a} {b}") == ["b", "a"])
+}
+
+@Test func derivePlaceholdersIncludesNegativeOnlyNames() {
+    #expect(
+        Compose.derivePlaceholders(text: "push {branch}", negative: "don't push {branch} to {remote}")
+            == ["branch", "remote"])
+}
+
 // MARK: - compose
 
 @Test func composeEmptyIsEmpty() {

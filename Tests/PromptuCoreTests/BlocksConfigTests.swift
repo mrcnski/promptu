@@ -66,6 +66,26 @@ private func tempDir() throws -> URL {
     #expect(blocks == [Block(key: "x", desc: "mine", text: "mine")])
 }
 
+@Test func serializeReproducesTheDefaultBlocksJSON() throws {
+    let blocks = try JSONDecoder().decode(
+        [Block].self, from: Data(BlocksConfig.defaultBlocksJSON.utf8))
+    #expect(BlocksConfig.serialize(blocks) == BlocksConfig.defaultBlocksJSON)
+}
+
+@Test func saveRoundtripsBlocksWithSpecialCharacters() throws {
+    let dir = try tempDir()
+    defer { try? FileManager.default.removeItem(at: dir) }
+    let file = dir.appendingPathComponent("blocks.json")
+    let blocks = [
+        Block(
+            key: "x", desc: "say \"hi\"", text: "line\nbreak\tand \\slash",
+            negative: "don't", placeholders: ["a", "b"])
+    ]
+
+    try BlocksConfig.save(blocks, to: file)
+    #expect(try BlocksConfig.load(file) == blocks)
+}
+
 @Test func loadOrSeedThrowsOnMalformedFileWithoutOverwriting() throws {
     let dir = try tempDir()
     defer { try? FileManager.default.removeItem(at: dir) }
