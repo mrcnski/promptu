@@ -1,4 +1,5 @@
 import Carbon.HIToolbox
+import Foundation
 
 /// A single global hotkey registered with Carbon's RegisterEventHotKey,
 /// which needs no accessibility permissions and swallows the key
@@ -26,10 +27,13 @@ final class HotKey {
                 return noErr
             },
             1, &eventType, Unmanaged.passUnretained(self).toOpaque(), &handlerRef)
-        RegisterEventHotKey(
+        let status = RegisterEventHotKey(
             UInt32(keyCode), UInt32(modifiers),
             EventHotKeyID(signature: OSType(0x504D5455), id: 1),  // "PMTU"
             GetApplicationEventTarget(), 0, &hotKeyRef)
+        if status != noErr {
+            NSLog("promptu-bar: hotkey registration failed (OSStatus %d)", status)
+        }
     }
 
     deinit {

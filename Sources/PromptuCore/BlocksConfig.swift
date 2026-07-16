@@ -2,10 +2,8 @@ import Foundation
 
 /// Loads the block list shared with Emacs promptu.
 public enum BlocksConfig {
-    public static var defaultURL: URL {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".config/promptu/blocks.json")
-    }
+    public static let defaultURL = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent(".config/promptu/blocks.json")
 
     /// Contents seeded into blocks.json on first run: promptu.el's
     /// default block set (`promptu-default-blocks`), kept verbatim so

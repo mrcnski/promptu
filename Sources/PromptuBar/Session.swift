@@ -18,7 +18,7 @@ final class Session: ObservableObject {
     let blocks: [Block]
     let loadError: String?
 
-    @Published private(set) var composition = Composition()
+    @Published private var composition = Composition()
     @Published var negateNext = false
     @Published var pending: Pending?
     /// Text being edited for the entry above the point, nil when not editing.
