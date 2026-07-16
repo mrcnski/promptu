@@ -164,10 +164,27 @@ struct ComposerView: View {
     /// One "key action" hint, two-tone: the key bright, the label dimmed.
     private func hint(_ key: String, _ label: String) -> some View {
         HStack(spacing: 3) {
-            Text(key).font(.caption.monospaced().bold())
-                .foregroundStyle(theme.foreground.opacity(0.8))
+            hintKey(key)
             Text(label).font(.caption).foregroundStyle(theme.dimmed)
         }
+    }
+
+    private func hintKey(_ key: String) -> some View {
+        Text(key).font(.caption.monospaced().bold())
+            .foregroundStyle(theme.foreground.opacity(0.8))
+    }
+
+    /// A hint that is also a clickable button. Like the keys it mirrors,
+    /// it is inert while a text field has the focus.
+    private func hintButton(
+        _ key: String, _ label: String, action: @escaping () -> Void
+    ) -> some View {
+        Button {
+            if !fieldShown { action() }
+        } label: {
+            hint(key, label)
+        }
+        .buttonStyle(HoverButtonStyle(theme: theme, horizontalPadding: 3))
     }
 
     private var footer: some View {
@@ -175,46 +192,69 @@ struct ComposerView: View {
             if session.editorShown {
                 HStack {
                     if session.draft == nil {
-                        hint("esc", "back")
+                        hintButton("esc", "back") { session.toggleEditor() }
                         Spacer()
                         Text("click a block to edit it")
                             .font(.caption).foregroundStyle(theme.dimmed)
                     } else {
-                        hint("⏎", "save")
+                        Button { session.submitDraft() } label: { hint("⏎", "save") }
+                            .buttonStyle(HoverButtonStyle(theme: theme))
                         Spacer()
-                        hint("esc", "cancel")
+                        Button { session.cancelDraft() } label: { hint("esc", "cancel") }
+                            .buttonStyle(HoverButtonStyle(theme: theme))
                     }
                 }
             } else if session.negateNext {
                 HStack {
-                    Text("negating next")
-                        .font(.caption.bold())
-                        .foregroundStyle(theme.placeholder)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(theme.placeholder.opacity(0.15), in: Capsule())
+                    Button {
+                        session.negateNext = false
+                    } label: {
+                        Text("negating next")
+                            .font(.caption.bold())
+                            .foregroundStyle(theme.placeholder)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(theme.placeholder.opacity(0.15), in: Capsule())
+                    }
+                    .buttonStyle(HoverButtonStyle(theme: theme))
                     Spacer()
                 }
             } else {
                 HStack {
-                    hint("-", "negate"); Spacer()
-                    hint("⌫", "remove"); Spacer()
-                    hint("↑↓", "point"); Spacer()
-                    hint("⌘E", "edit"); Spacer()
-                    hint("⌘Z", "undo"); Spacer()
-                    hint("⏎", "copy")
+                    hintButton("-", "negate") { session.negateNext.toggle() }
+                    Spacer()
+                    hintButton("⌫", "remove") { session.removeEntry() }
+                    Spacer()
+                    pointHint
+                    Spacer()
+                    hintButton("⌘E", "edit") { session.beginEdit() }
+                    Spacer()
+                    hintButton("⌘Z", "undo") { session.undo() }
+                    Spacer()
+                    hintButton("⏎", "copy") { if session.finish() { close() } }
                 }
             }
             HStack {
                 Spacer()
                 Button { session.toggleEditor() } label: {
-                    hint("⌘B", session.editorShown ? "compose" : "blocks")
+                    hint("⌘B", session.editorShown ? "compose" : "block editor")
                 }
                 .buttonStyle(HoverButtonStyle(theme: theme))
                 Button { NSApp.terminate(nil) } label: { hint("⌘Q", "quit") }
                     .buttonStyle(HoverButtonStyle(theme: theme))
                     .keyboardShortcut("q", modifiers: .command)
             }
+        }
+    }
+
+    /// The point hint: each arrow is its own little button.
+    private var pointHint: some View {
+        HStack(spacing: 2) {
+            Button { if !fieldShown { session.pointUp() } } label: { hintKey("↑") }
+                .buttonStyle(HoverButtonStyle(theme: theme, horizontalPadding: 3))
+            Button { if !fieldShown { session.pointDown() } } label: { hintKey("↓") }
+                .buttonStyle(HoverButtonStyle(theme: theme, horizontalPadding: 3))
+            Text("point").font(.caption).foregroundStyle(theme.dimmed)
         }
     }
 
@@ -295,11 +335,15 @@ struct ComposerView: View {
 }
 
 /// Plain button that highlights under the mouse and dims while pressed.
+/// The tighter horizontal padding keeps a row of many small buttons
+/// (the footer hints) inside the panel width.
 struct HoverButtonStyle: ButtonStyle {
     let theme: Theme
+    var horizontalPadding: CGFloat = 6
 
     func makeBody(configuration: Configuration) -> some View {
-        Highlighted(configuration: configuration, theme: theme)
+        Highlighted(
+            configuration: configuration, theme: theme, horizontalPadding: horizontalPadding)
     }
 
     // ButtonStyle itself can't hold per-button @State; this inner
@@ -307,11 +351,12 @@ struct HoverButtonStyle: ButtonStyle {
     private struct Highlighted: View {
         let configuration: Configuration
         let theme: Theme
+        let horizontalPadding: CGFloat
         @State private var hovering = false
 
         var body: some View {
             configuration.label
-                .padding(.horizontal, 6)
+                .padding(.horizontal, horizontalPadding)
                 .padding(.vertical, 3)
                 .background(
                     hovering ? theme.hover : .clear,
