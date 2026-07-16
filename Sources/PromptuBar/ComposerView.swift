@@ -39,24 +39,34 @@ struct ComposerView: View {
         }
     }
 
+    /// The preview split into lines, so the scroll view can target the
+    /// point marker's line.
+    private var previewLines: [String] {
+        (session.isEmpty ? "empty prompt" : session.preview)
+            .components(separatedBy: "\n")
+    }
+
     private var preview: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                Text(session.isEmpty ? "empty prompt" : session.preview)
-                    .font(.system(.body, design: .monospaced))
-                    .foregroundStyle(session.isEmpty ? .secondary : .primary)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .id("preview")
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(previewLines.enumerated()), id: \.offset) { idx, line in
+                        Text(line)
+                            .font(.system(.body, design: .monospaced))
+                            .foregroundStyle(session.isEmpty ? .secondary : .primary)
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .id(idx)
+                    }
+                }
             }
             .frame(minHeight: 40, maxHeight: 300)
             .onChange(of: session.preview) {
-                // Keep the tail visible while appending; a moved point
-                // means the user is working higher up, so leave the
-                // scroll position alone.
-                if session.composition.point == nil {
-                    proxy.scrollTo("preview", anchor: .bottom)
-                }
+                // Follow the point: its marker's line when moved, the tail
+                // otherwise. The nil anchor scrolls the minimum needed.
+                let lines = previewLines
+                let target = lines.firstIndex { $0.contains("▮") } ?? lines.count - 1
+                proxy.scrollTo(target, anchor: nil)
             }
         }
     }
