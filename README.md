@@ -77,6 +77,10 @@ add Promptu.
 - Whole-prompt free-text editing (`M-E`)
 - Custom `promptu-separator` / negation prefix (fixed at `"\n- "` / `"don't "`)
 
+## TODO
+
+- [ ] Use the mascot as the app icon.
+
 ## License
 
 GPL-3.0, like promptu.
