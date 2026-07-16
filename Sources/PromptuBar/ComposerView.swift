@@ -32,7 +32,7 @@ struct ComposerView: View {
         .focusable()
         .focusEffectDisabled()
         .focused($keysFocused)
-        .onKeyPress(phases: .down) { handleKey($0) }
+        .onKeyPress(phases: [.down, .repeat]) { handleKey($0) }
         .onAppear { keysFocused = true }
         .onChange(of: fieldShown) { _, shown in
             if shown { fieldFocused = true } else { keysFocused = true }
@@ -186,6 +186,11 @@ struct ComposerView: View {
         default:
             break
         }
+
+        // Everything above may auto-repeat while held; adding is
+        // deliberate, so a held block key must not pile up entries or
+        // flip negation.
+        if press.phase == .repeat { return .handled }
 
         if press.characters == "-" {
             session.negateNext.toggle()
