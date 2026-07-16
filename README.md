@@ -23,50 +23,6 @@ The panel follows the system appearance by default: [Catppuccin
 Latte](https://catppuccin.com) in light mode,
 [Nimbus](https://github.com/mrcnski/nimbus-theme) in dark mode.
 
-`⌘,` opens the settings screen, where the theme can be pinned and the
-global hotkey re-recorded; both choices are remembered.
-
-## Blocks
-
-Blocks are read from `~/.config/promptu/blocks.json`, the same file Emacs
-promptu can load via `promptu-blocks-from-json`. Edit once, both frontends
-update. On first launch, when the file doesn't exist, it is seeded with
-promptu's default block set — edit from there. An existing file is never
-touched. The file is an array of objects mirroring promptu's block plists:
-
-```json
-[
-  { "key": "r", "desc": "review", "text": "review your changes" },
-  { "key": "i", "desc": "investigate", "text": "investigate {link}", "placeholders": ["link"] },
-  { "key": "P", "desc": "push", "text": "push when done", "negative": "don't push" }
-]
-```
-
-`{name}` placeholders are prompted for when the block is added. Blocks are
-re-read on app restart.
-
-Blocks can also be edited in-app: `⌘B` opens the Block Editor — click a
-block to change or delete it, or add a new one. Saving rewrites
-blocks.json (the `placeholders` field is derived from `{name}`s in the
-texts), so Emacs promptu picks the changes up too.
-
-## Keys
-
-| Key            | Action                                             |
-|----------------|----------------------------------------------------|
-| _block_        | Add that block at the point                        |
-| `-`            | The next block added is negated                    |
-| `⌫`            | Remove the entry above the point (or the last one) |
-| `↑`/`↓` (or `C-p`/`C-n`) | Move the point, shown as `▮` in the preview |
-| `⌘E`           | Edit the entry above the point (or the last one)   |
-| `⌘Z` / `⇧⌘Z`   | Undo / redo                                        |
-| `RET`          | Copy the composed prompt, close the panel          |
-| `⌘B`           | Toggle the Block Editor                            |
-| `⌘,`           | Toggle settings (theme, hotkey)                    |
-| `ESC`          | Close the panel (prompt is kept)                   |
-| `⌥⌘P`          | Summon the panel from anywhere (global, default)   |
-| `⌘Q`           | Quit                                               |
-
 ## Install
 
 With [Homebrew](https://brew.sh):
@@ -86,7 +42,27 @@ quarantines the download; clear the flag once:
 xattr -d com.apple.quarantine /Applications/Promptu.app
 ```
 
-Or build from source (below) — locally built apps need no blessing.
+Or build from source (below). Locally built apps don't need the quarantine cleared.
+
+## Blocks
+
+Blocks are customizable and are stored in `~/.config/promptu/blocks.json`.  On
+first launch, when the file doesn't exist, it is seeded with promptu's default
+block set.  The file is an array of objects:
+
+```json
+[
+  { "key": "r", "desc": "review", "text": "review your changes" },
+  { "key": "i", "desc": "investigate", "text": "investigate {link}", "placeholders": ["link"] },
+  { "key": "P", "desc": "push", "text": "push when done", "negative": "don't push" }
+]
+```
+
+`{name}` placeholders are prompted for when the block is added.  Blocks are
+re-read on app restart.
+
+Blocks can also be edited in-app: `⌘B` opens the Block Editor.  Click a block to
+change or delete it, or add a new one.
 
 ## Build
 
