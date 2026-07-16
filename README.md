@@ -16,7 +16,9 @@ focused, so pick one nothing else needs.
 
 Blocks are read from `~/.config/promptu/blocks.json`, the same file Emacs
 promptu can load via `promptu-blocks-from-json`. Edit once, both frontends
-update. The file is an array of objects mirroring promptu's block plists:
+update. On first launch, when the file doesn't exist, it is seeded with
+promptu's default block set — edit from there. An existing file is never
+touched. The file is an array of objects mirroring promptu's block plists:
 
 ```json
 [

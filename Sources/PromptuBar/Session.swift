@@ -26,7 +26,7 @@ final class Session: ObservableObject {
 
     init() {
         do {
-            blocks = try BlocksConfig.load()
+            blocks = try BlocksConfig.loadOrSeed()
             loadError = nil
         } catch {
             blocks = []
