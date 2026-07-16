@@ -18,15 +18,9 @@ Press block keys to build the prompt while watching the live preview, then press
 `RET`.  The composed prompt lands on the clipboard and focus returns to where
 you were, ready to paste.
 
-The hotkey is a constant in `AppDelegate.swift` (`hotKeyCode` /
-`hotKeyModifiers`); it overrides the same combination in whatever app is
-focused, so pick one nothing else needs.
-
-The panel follows the system appearance: [Catppuccin
+The panel follows the system appearance by default: [Catppuccin
 Latte](https://catppuccin.com) in light mode,
-[Nimbus](https://github.com/mrcnski/nimbus-theme) in dark mode
-(palettes in `Theme.swift`). The footer's theme row can pin either
-theme instead of following the system; the choice is remembered.
+[Nimbus](https://github.com/mrcnski/nimbus-theme) in dark mode.
 
 ## Blocks
 
