@@ -75,10 +75,11 @@ make install   # copy it to /Applications
 
 Requires macOS 14+ and a Swift 6 toolchain (Xcode 16+).
 
-After quitting, relaunch with `open dist/Promptu.app` from the checkout, or —
-once `make install` has run — launch "Promptu" from Spotlight or
-/Applications. To start at login: System Settings → General → Login Items,
-add Promptu.
+Launch with `open dist/Promptu.app` from the checkout, or, once `make install`
+has run, launch "Promptu" from Spotlight or /Applications.
+
+Apps run from the checkout skip the automatic login-item registration; use the
+settings toggle if you want one.
 
 ## Todo
 

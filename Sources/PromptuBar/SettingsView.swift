@@ -1,8 +1,10 @@
 import AppKit
 import Carbon.HIToolbox
+import ServiceManagement
 import SwiftUI
 
-/// In-popover settings: the theme choice and the global hotkey.
+/// In-popover settings: the theme choice, the global hotkey, and
+/// launch at login.
 struct SettingsView: View {
     let theme: Theme
     @AppStorage(ThemeChoice.defaultsKey) private var themeChoice = ThemeChoice.system
@@ -10,6 +12,8 @@ struct SettingsView: View {
     @State private var recording = false
     @State private var recordingError: String?
     @State private var monitor: Any?
+    @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
+    @State private var loginError: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -47,9 +51,38 @@ struct SettingsView: View {
             if let error = recordingError {
                 Text(error).font(.caption).foregroundStyle(theme.error)
             }
+
+            Text("launch at login").font(.caption).foregroundStyle(theme.dimmed)
+            HStack(spacing: 2) {
+                ForEach([true, false], id: \.self) { on in
+                    Button { setLaunchAtLogin(on) } label: {
+                        Text(on ? "on" : "off")
+                            .font(on == launchAtLogin ? .callout.bold() : .callout)
+                            .foregroundStyle(on == launchAtLogin ? theme.key : theme.dimmed)
+                    }
+                    .buttonStyle(HoverButtonStyle(theme: theme))
+                }
+            }
+            if let error = loginError {
+                Text(error).font(.caption).foregroundStyle(theme.error)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .onDisappear { stopRecording() }
+    }
+
+    private func setLaunchAtLogin(_ enabled: Bool) {
+        do {
+            if enabled {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+            loginError = nil
+        } catch {
+            loginError = error.localizedDescription
+        }
+        launchAtLogin = SMAppService.mainApp.status == .enabled
     }
 
     /// Capture the next keypress as the hotkey. The global hotkey is

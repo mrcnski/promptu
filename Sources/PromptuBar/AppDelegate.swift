@@ -1,5 +1,6 @@
 import AppKit
 import Carbon.HIToolbox
+import ServiceManagement
 import SwiftUI
 
 /// Owns the status item, the popover, and the global hotkey.
@@ -17,6 +18,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // LSUIElement covers bundled runs; this also covers `swift run`.
         NSApp.setActivationPolicy(.accessory)
+
+        registerLoginItemOnce()
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem.button?.image = NSImage(
@@ -45,6 +48,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.hotKey = nil }
         }
+    }
+
+    /// Register as a login item on the first launch from /Applications,
+    /// so installs start at login by default. The settings toggle (or
+    /// System Settings → Login Items) turns it off afterwards; the
+    /// one-shot flag keeps that choice from being overridden. Dev runs
+    /// from a checkout are skipped so they never pin themselves.
+    private func registerLoginItemOnce() {
+        guard !UserDefaults.standard.bool(forKey: "loginItemApplied"),
+            Bundle.main.bundlePath.hasPrefix("/Applications/")
+        else { return }
+        UserDefaults.standard.set(true, forKey: "loginItemApplied")
+        try? SMAppService.mainApp.register()
     }
 
     /// (Re)register the global hotkey from its saved setting; replacing
