@@ -1,7 +1,11 @@
+<div align="center">
+  <img src="mascot.svg" alt="promptu mascot — a friendly popover panel holding up the next prompt block" width="180"/>
+
 # promptu-app
 
-A macOS menubar companion to [promptu](https://github.com/mrcnski/promptu):
-compose LLM prompts from building blocks, from any app, no Emacs required.
+*A macOS menubar companion to [promptu](https://github.com/mrcnski/promptu):
+compose LLM prompts from building blocks, from any app, no Emacs required.*
+</div>
 
 Press `⌥⌘P` from any app (or click the menubar icon), press block keys to
 build the prompt while watching the live preview, then press `RET` — the
