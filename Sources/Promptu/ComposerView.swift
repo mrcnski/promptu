@@ -392,6 +392,10 @@ struct ComposerView: View {
                 session.toggleEditor()
                 return .handled
             }
+            if command && press.key.character == "," {
+                session.toggleSettings()
+                return .handled
+            }
             return .ignored
         case .settings:
             if press.key == .escape || (command && press.key.character == ",") {

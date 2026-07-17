@@ -9,7 +9,7 @@ import SwiftUI
 /// public API for opening its window programmatically, which the global
 /// hotkey needs.
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private var statusItem: NSStatusItem!
     private let popover = NSPopover()
     private var hotKey: HotKey?
@@ -29,6 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.button?.target = self
 
         popover.behavior = .transient
+        popover.delegate = self
         let hosting = NSHostingController(
             rootView: ComposerView(session: session) { [weak self] in
                 self?.close()
@@ -86,9 +87,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         try? SMAppService.mainApp.register()
     }
 
-    /// (Re)register the global hotkey from its saved setting; replacing
-    /// the HotKey unregisters the old combination via its deinit.
+    /// (Re)register the global hotkey from its saved setting. The old
+    /// registration must go first: registering a combination that is
+    /// still registered fails, and the stale one would then unregister
+    /// on release — leaving no hotkey at all.
     private func registerHotKey() {
+        hotKey = nil
         let spec = HotKeySpec.load()
         hotKey = HotKey(keyCode: spec.keyCode, modifiers: spec.modifiers) {
             [weak self] in self?.toggle()
@@ -97,6 +101,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func toggle() {
         popover.isShown ? close() : open()
+    }
+
+    /// A popover closed while the settings recorder was capturing (a
+    /// click outside, say) never runs the recorder's cleanup, which
+    /// would leave the hotkey suspended for good. Re-registering is
+    /// cheap and idempotent, so just always do it on close.
+    func popoverDidClose(_ notification: Notification) {
+        registerHotKey()
     }
 
     private func open() {
