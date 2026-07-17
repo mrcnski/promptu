@@ -42,7 +42,10 @@ struct BlockEditorView: View {
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
-            .frame(maxHeight: 300)
+            // A definite height, not maxHeight: the popover sizes itself
+            // to its content, and a List given an unbounded height
+            // reports none of its own and collapses to nothing.
+            .frame(height: 300)
             Button {
                 session.beginDraft()
             } label: {
