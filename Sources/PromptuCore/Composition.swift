@@ -34,16 +34,29 @@ public struct Composition: Equatable, Sendable {
     /// The composed prompt with ▮ at a moved point's gap, on its own
     /// line when the separator is multi-line.
     public var preview: String {
+        previewLines.map(\.text).joined(separator: "\n")
+    }
+
+    /// The preview split into lines, each paired with the gap a block
+    /// dropped on that line inserts at: an entry's lines carry the
+    /// entry's own slot (insert before it), the ▮ marker's line the
+    /// point's gap.
+    public var previewLines: [(text: String, gap: Int)] {
+        var lines: [(text: String, gap: Int)] = [(text: "", gap: 0)]
+        func append(_ segment: String, gap: Int) {
+            var parts = segment.components(separatedBy: "\n")
+            lines[lines.count - 1].text += parts.removeFirst()
+            for part in parts { lines.append((text: part, gap: gap)) }
+        }
         let ownLine = Compose.separator.contains("\n")
-        var out = ""
-        if point == 0 { out += "▮" + (ownLine ? "\n" : "") }
+        if point == 0 { append(ownLine ? "▮\n" : "▮", gap: 0) }
         for (idx, entry) in entries.enumerated() {
-            out += (idx == 0 ? Compose.linePrefix() : Compose.separator) + entry
+            append((idx == 0 ? Compose.linePrefix() : Compose.separator) + entry, gap: idx)
             if point == idx + 1 {
-                out += (ownLine ? "\n" : "") + "▮"
+                append(ownLine ? "\n▮" : "▮", gap: idx + 1)
             }
         }
-        return out
+        return lines
     }
 
     /// Move the point to gap i, clamped to the entries; the end is

@@ -142,3 +142,30 @@ import Testing
     c.pointUp()
     #expect(c.preview == "▮\n- a")
 }
+
+// MARK: - previewLines
+
+@Test func previewLinesCarryEachEntrysSlotAsDropGap() {
+    var c = Composition()
+    c.add("a")
+    c.add("b")
+    #expect(c.previewLines.map(\.text) == ["- a", "- b"])
+    #expect(c.previewLines.map(\.gap) == [0, 1])
+}
+
+@Test func previewLinesGiveMarkerLineThePointGap() {
+    var c = Composition()
+    c.add("a")
+    c.add("b")
+    c.pointUp()
+    #expect(c.previewLines.map(\.text) == ["- a", "▮", "- b"])
+    #expect(c.previewLines.map(\.gap) == [0, 1, 1])
+}
+
+@Test func previewLinesKeepMultilineEntryOnOneSlot() {
+    var c = Composition()
+    c.add("a\nb")
+    c.add("c")
+    #expect(c.previewLines.map(\.text) == ["- a", "b", "- c"])
+    #expect(c.previewLines.map(\.gap) == [0, 0, 1])
+}

@@ -52,6 +52,8 @@ final class Session: ObservableObject {
 
     var isEmpty: Bool { composition.entries.isEmpty }
     var preview: String { composition.preview }
+    var previewLines: [(text: String, gap: Int)] { composition.previewLines }
+    var entryCount: Int { composition.entries.count }
 
     func add(_ block: Block) {
         let negated = negateNext
@@ -62,6 +64,14 @@ final class Session: ObservableObject {
         } else {
             pending = Pending(block: block, negated: negated, names: names)
         }
+    }
+
+    /// Insert a block dropped on the preview at that gap: the point
+    /// moves there first, then the usual add runs — the entry lands at
+    /// the drop position and the point advances past it.
+    func insert(_ block: Block, at gap: Int) {
+        composition.setPoint(gap)
+        add(block)
     }
 
     func submitPlaceholder() {
@@ -167,10 +177,9 @@ final class Session: ObservableObject {
         draft = d
     }
 
-    /// One step of a live drag reorder: move the dragged block into the
-    /// hovered block's slot and save the new order. A failed save only
-    /// logs — the order still holds in memory, and the next successful
-    /// save writes it out.
+    /// Move the dragged block into the target's slot and save the new
+    /// order. A failed save only logs — the order still holds in
+    /// memory, and the next successful save writes it out.
     func moveBlock(_ key: String, over target: String) {
         let moved = blocks.moving(key, over: target)
         guard moved != blocks else { return }
