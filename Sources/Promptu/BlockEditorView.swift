@@ -8,13 +8,7 @@ struct BlockEditorView: View {
     let theme: Theme
     @FocusState.Binding var fieldFocused: Bool
 
-    /// Reorder-drag state, shared with each row. draggingKey names the
-    /// block under the finger; dragOffset is its gesture translation;
-    /// frames holds each row's resting position, frozen while a drag is
-    /// in flight so the layout it reasons about stays still.
-    @State private var draggingKey: String?
-    @State private var dragOffset: CGFloat = 0
-    @State private var frames: [AnyHashable: CGRect] = [:]
+    @State private var drag = ReorderDrag()
 
     private static let rowSpacing: CGFloat = 3
     private static let space = "blocks"
@@ -32,11 +26,7 @@ struct BlockEditorView: View {
     /// The row order changes only as the drag crosses a resting row's
     /// midpoint, so animating on this index — not the continuous offset
     /// — slides the others without lagging the dragged row.
-    private var dragTarget: Int? {
-        Reorder.target(
-            order: blockIDs, frames: frames,
-            dragging: draggingKey.map(AnyHashable.init), offset: dragOffset)
-    }
+    private var dragTarget: Int? { drag.target(in: blockIDs) }
 
     /// A plain ScrollView + VStack, reordered by a hand-rolled
     /// DragGesture (grab a row's grip). Unlike onDrag/onDrop there is no
@@ -50,17 +40,12 @@ struct BlockEditorView: View {
                         BlockRow(
                             session: session, theme: theme, block: block,
                             content: row(block), spacing: Self.rowSpacing, space: Self.space,
-                            draggingKey: $draggingKey, dragOffset: $dragOffset, frames: frames)
+                            drag: $drag)
                     }
                 }
                 .coordinateSpace(name: Self.space)
-                .animation(.snappy(duration: 0.22), value: dragTarget)
-                .onPreferenceChange(ReorderFrameKey.self) { next in
-                    // Freeze the map during a drag: the offsets applied
-                    // to rows must not feed back into their measured
-                    // positions.
-                    if draggingKey == nil { frames = next }
-                }
+                .animation(ReorderDrag.settle, value: dragTarget)
+                .onPreferenceChange(ReorderFrameKey.self) { drag.measure($0) }
             }
             .frame(maxHeight: 380)
             Button {
@@ -161,19 +146,11 @@ private struct BlockRow<Content: View>: View {
     let content: Content
     let spacing: CGFloat
     let space: String
-    @Binding var draggingKey: String?
-    @Binding var dragOffset: CGFloat
-    let frames: [AnyHashable: CGRect]
+    @Binding var drag: ReorderDrag
     @State private var hovering = false
 
-    private var dragging: Bool { draggingKey == block.key }
-
-    private var offset: CGFloat {
-        Reorder.offset(
-            for: AnyHashable(block.id), order: session.blocks.map { AnyHashable($0.id) },
-            frames: frames, dragging: draggingKey.map(AnyHashable.init),
-            dragOffset: dragOffset, spacing: spacing)
-    }
+    private var dragging: Bool { drag.draggingID == AnyHashable(block.id) }
+    private var order: [AnyHashable] { session.blocks.map { AnyHashable($0.id) } }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -183,7 +160,14 @@ private struct BlockRow<Content: View>: View {
             Grip(theme: theme).hidden()
         }
         .overlay(alignment: .trailing) {
-            Grip(theme: theme).gesture(drag)
+            Grip(theme: theme)
+                // A grip click that never moves must not fall through
+                // to the row's tap and open the edit form.
+                .onTapGesture {}
+                .gesture(
+                    reorderGesture(
+                        $drag, id: AnyHashable(block.id), space: space, order: order,
+                        move: session.moveBlock))
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 3)
@@ -194,37 +178,12 @@ private struct BlockRow<Content: View>: View {
         .onHover { hovering = $0 }
         .onTapGesture { session.beginDraft(block) }
         .reorderFrame(block.id, in: space)
-        .offset(y: offset)
+        .offset(y: drag.offset(of: AnyHashable(block.id), in: order, spacing: spacing))
         .zIndex(dragging ? 1 : 0)
     }
 
     private var background: Color {
         if dragging { return theme.hover }
         return hovering ? theme.hover : .clear
-    }
-
-    private var drag: some Gesture {
-        DragGesture(minimumDistance: 3, coordinateSpace: .named(space))
-            .onChanged { value in
-                if draggingKey == nil { draggingKey = block.key }
-                dragOffset = value.translation.height
-            }
-            .onEnded { _ in
-                let order = session.blocks.map { AnyHashable($0.id) }
-                if let from = session.blocks.firstIndex(where: { $0.key == block.key }),
-                    let to = Reorder.target(
-                        order: order, frames: frames,
-                        dragging: AnyHashable(block.key), offset: dragOffset)
-                {
-                    withAnimation(.snappy(duration: 0.22)) {
-                        session.moveBlock(from: from, to: to)
-                        draggingKey = nil
-                        dragOffset = 0
-                    }
-                } else {
-                    draggingKey = nil
-                    dragOffset = 0
-                }
-            }
     }
 }

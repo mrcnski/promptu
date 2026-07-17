@@ -11,12 +11,7 @@ struct ComposerView: View {
     @Environment(\.colorScheme) private var colorScheme
     @AppStorage(ThemeChoice.defaultsKey) private var themeChoice = ThemeChoice.system
 
-    /// Entry-reorder drag state, the same trio as the block editor's:
-    /// the dragged entry's index, its gesture translation, and the
-    /// rows' resting frames, frozen while a drag is in flight.
-    @State private var draggingEntry: Int?
-    @State private var entryDragOffset: CGFloat = 0
-    @State private var entryFrames: [AnyHashable: CGRect] = [:]
+    @State private var drag = ReorderDrag()
 
     /// Where the preview's content sits relative to its viewport,
     /// driving the edge fades that mark clipped content.
@@ -88,11 +83,7 @@ struct ComposerView: View {
 
     /// See BlockEditorView.dragTarget — the same drag geometry, over
     /// the preview's entry rows.
-    private var entryDragTarget: Int? {
-        Reorder.target(
-            order: entryIDs, frames: entryFrames,
-            dragging: draggingEntry.map { entryIDs[$0] }, offset: entryDragOffset)
-    }
+    private var entryDragTarget: Int? { drag.target(in: entryIDs) }
 
     /// The preview as one row per entry (plus the point marker's row),
     /// reorderable by the same hand-rolled DragGesture as the block
@@ -115,11 +106,8 @@ struct ComposerView: View {
                     }
                 }
                 .coordinateSpace(name: Self.previewSpace)
-                .animation(.snappy(duration: 0.22), value: entryDragTarget)
-                .onPreferenceChange(ReorderFrameKey.self) { next in
-                    // Freeze the map during a drag; see BlockEditorView.
-                    if draggingEntry == nil { entryFrames = next }
-                }
+                .animation(ReorderDrag.settle, value: entryDragTarget)
+                .onPreferenceChange(ReorderFrameKey.self) { drag.measure($0) }
                 .onGeometryChange(for: CGRect.self) {
                     $0.frame(in: .named(Self.viewportSpace))
                 } action: { previewContent = $0 }
@@ -178,7 +166,7 @@ struct ComposerView: View {
         Text("▮")
             .font(.system(.body, design: .monospaced))
             .foregroundStyle(theme.key)
-            .opacity(draggingEntry == nil ? 1 : 0)
+            .opacity(drag.active ? 0 : 1)
             .id(Self.markerID)
     }
 
@@ -199,41 +187,19 @@ struct ComposerView: View {
         .overlay(alignment: .trailing) {
             Grip(theme: theme, iconAlignment: .top)
                 .padding(.top, 2)
-                .gesture(entryDrag(row))
+                .gesture(
+                    reorderGesture(
+                        $drag, id: row.id, space: Self.previewSpace, order: entryIDs,
+                        move: session.moveEntry))
         }
         // The dragged row rides above the rest on an opaque background,
         // so it reads as lifted while it floats over them.
         .background(
-            draggingEntry == row.index ? theme.hover : .clear,
+            drag.draggingID == row.id ? theme.hover : .clear,
             in: RoundedRectangle(cornerRadius: 4))
         .reorderFrame(row.id, in: Self.previewSpace)
-        .offset(
-            y: Reorder.offset(
-                for: row.id, order: entryIDs, frames: entryFrames,
-                dragging: draggingEntry.map { entryIDs[$0] },
-                dragOffset: entryDragOffset, spacing: 0)
-        )
-        .zIndex(draggingEntry == row.index ? 1 : 0)
-    }
-
-    private func entryDrag(_ row: PreviewRow) -> some Gesture {
-        DragGesture(minimumDistance: 3, coordinateSpace: .named(Self.previewSpace))
-            .onChanged { value in
-                if draggingEntry == nil { draggingEntry = row.index }
-                entryDragOffset = value.translation.height
-            }
-            .onEnded { _ in
-                if let from = draggingEntry, let to = entryDragTarget {
-                    withAnimation(.snappy(duration: 0.22)) {
-                        session.moveEntry(from: from, to: to)
-                        draggingEntry = nil
-                        entryDragOffset = 0
-                    }
-                } else {
-                    draggingEntry = nil
-                    entryDragOffset = 0
-                }
-            }
+        .offset(y: drag.offset(of: row.id, in: entryIDs, spacing: 0))
+        .zIndex(drag.draggingID == row.id ? 1 : 0)
     }
 
     private var blockGrid: some View {
