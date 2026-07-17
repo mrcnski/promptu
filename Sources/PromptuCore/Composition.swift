@@ -34,48 +34,16 @@ public struct Composition: Equatable, Sendable {
     /// The composed prompt with ▮ at a moved point's gap, on its own
     /// line when the separator is multi-line.
     public var preview: String {
-        previewLines.map(\.text).joined(separator: "\n")
-    }
-
-    /// The preview split into lines, each paired with the gap a block
-    /// dropped on that line inserts at — an entry's lines carry the
-    /// entry's own slot (insert before it), the ▮ marker's line the
-    /// point's gap — and with the index of the entry the line renders,
-    /// nil for the marker's own line.
-    public var previewLines: [(text: String, gap: Int, entry: Int?)] {
-        var lines: [(text: String, gap: Int, entry: Int?)] = [(text: "", gap: 0, entry: nil)]
-        func append(_ segment: String, gap: Int, entry: Int?) {
-            var parts = segment.components(separatedBy: "\n")
-            if lines[lines.count - 1].text.isEmpty {
-                lines[lines.count - 1].gap = gap
-                lines[lines.count - 1].entry = entry
-            }
-            lines[lines.count - 1].text += parts.removeFirst()
-            for part in parts { lines.append((text: part, gap: gap, entry: entry)) }
-        }
         let ownLine = Compose.separator.contains("\n")
-        if point == 0 { append(ownLine ? "▮\n" : "▮", gap: 0, entry: nil) }
+        var out = ""
+        if point == 0 { out += "▮" + (ownLine ? "\n" : "") }
         for (idx, entry) in entries.enumerated() {
-            append(
-                (idx == 0 ? Compose.linePrefix() : Compose.separator) + entry,
-                gap: idx, entry: idx)
+            out += (idx == 0 ? Compose.linePrefix() : Compose.separator) + entry
             if point == idx + 1 {
-                append(ownLine ? "\n▮" : "▮", gap: idx + 1, entry: nil)
+                out += (ownLine ? "\n" : "") + "▮"
             }
         }
-        return lines
-    }
-
-    /// Move the entry at `from` to gap `to` (both as they are before
-    /// the move); the point ends past the moved entry, as after add.
-    /// No-op when the move changes nothing or `from` is out of range.
-    public mutating func moveEntry(from: Int, to gap: Int) {
-        guard entries.indices.contains(from) else { return }
-        let dest = gap > from ? gap - 1 : gap
-        guard dest != from else { return }
-        checkpoint()
-        entries.insert(entries.remove(at: from), at: dest)
-        setPoint(dest + 1)
+        return out
     }
 
     /// Move the point to gap i, clamped to the entries; the end is

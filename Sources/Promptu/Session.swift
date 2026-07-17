@@ -52,8 +52,6 @@ final class Session: ObservableObject {
 
     var isEmpty: Bool { composition.entries.isEmpty }
     var preview: String { composition.preview }
-    var previewLines: [(text: String, gap: Int, entry: Int?)] { composition.previewLines }
-    var entryCount: Int { composition.entries.count }
 
     func add(_ block: Block) {
         let negated = negateNext
@@ -64,14 +62,6 @@ final class Session: ObservableObject {
         } else {
             pending = Pending(block: block, negated: negated, names: names)
         }
-    }
-
-    /// Insert a block dropped on the preview at that gap: the point
-    /// moves there first, then the usual add runs — the entry lands at
-    /// the drop position and the point advances past it.
-    func insert(_ block: Block, at gap: Int) {
-        composition.setPoint(gap)
-        add(block)
     }
 
     func submitPlaceholder() {
@@ -93,7 +83,6 @@ final class Session: ObservableObject {
     }
 
     func removeEntry() { composition.removeEntry() }
-    func moveEntry(_ index: Int, to gap: Int) { composition.moveEntry(from: index, to: gap) }
     func pointUp() { composition.pointUp() }
     func pointDown() { composition.pointDown() }
     func undo() { composition.undo() }
@@ -178,12 +167,14 @@ final class Session: ObservableObject {
         draft = d
     }
 
-    /// Reorder the block list from a List's `.onMove` and save the new
-    /// order. A failed save only logs — the order still holds in
-    /// memory, and the next successful save writes it out.
-    func moveBlocks(from source: IndexSet, to destination: Int) {
+    /// Move the block at `from` to index `to` (its index once the block
+    /// has been removed) and save the new order. A failed save only
+    /// logs — the order still holds in memory, and the next successful
+    /// save writes it out.
+    func moveBlock(from: Int, to: Int) {
+        guard blocks.indices.contains(from), blocks.indices.contains(to) else { return }
         var updated = blocks
-        updated.move(fromOffsets: source, toOffset: destination)
+        updated.insert(updated.remove(at: from), at: to)
         guard updated != blocks else { return }
         blocks = updated
         do {
