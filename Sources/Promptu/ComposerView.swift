@@ -18,7 +18,13 @@ struct ComposerView: View {
     @State private var entryDragOffset: CGFloat = 0
     @State private var entryFrames: [AnyHashable: CGRect] = [:]
 
-    private static let previewSpace = "preview"
+    /// Where the preview's content sits relative to its viewport,
+    /// driving the edge fades that mark clipped content.
+    @State private var previewContent: CGRect = .zero
+    @State private var previewViewport: CGFloat = 0
+
+    private nonisolated static let previewSpace = "preview"
+    private nonisolated static let viewportSpace = "previewViewport"
 
     private var theme: Theme { themeChoice.theme(for: colorScheme) }
     private var fieldShown: Bool {
@@ -114,8 +120,22 @@ struct ComposerView: View {
                     // Freeze the map during a drag; see BlockEditorView.
                     if draggingEntry == nil { entryFrames = next }
                 }
+                .onGeometryChange(for: CGRect.self) {
+                    $0.frame(in: .named(Self.viewportSpace))
+                } action: { previewContent = $0 }
             }
+            .coordinateSpace(name: Self.viewportSpace)
+            // No scroll indicator: its gutter appearing as the preview
+            // crosses the height cap would narrow the rows and jerk the
+            // trailing grips sideways. Edge fades mark clipped content
+            // instead.
+            .scrollIndicators(.never)
             .frame(minHeight: 40, maxHeight: 300)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
+                previewViewport = $0
+            }
+            .overlay(alignment: .top) { edgeFade(.top) }
+            .overlay(alignment: .bottom) { edgeFade(.bottom) }
             .onChange(of: session.preview) {
                 // Follow the point: its marker when moved, the tail
                 // otherwise. The nil anchor scrolls the minimum needed.
@@ -129,6 +149,24 @@ struct ComposerView: View {
         .padding(8)
         .background(theme.surface, in: RoundedRectangle(cornerRadius: 8))
         .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(theme.dimmed.opacity(0.15)))
+    }
+
+    /// A short gradient into the surface color at a clipped edge — the
+    /// scrollability hint standing in for the hidden scroll indicator.
+    private func edgeFade(_ edge: VerticalEdge) -> some View {
+        let clipped =
+            edge == .top
+            ? previewContent.minY < -1
+            : previewContent.maxY > previewViewport + 1
+        return LinearGradient(
+            colors: [theme.surface, theme.surface.opacity(0)],
+            startPoint: edge == .top ? .top : .bottom,
+            endPoint: edge == .top ? .bottom : .top
+        )
+        .frame(height: 14)
+        .allowsHitTesting(false)
+        .opacity(clipped ? 1 : 0)
+        .animation(.easeInOut(duration: 0.15), value: clipped)
     }
 
     private static let markerID: AnyHashable = "marker"
