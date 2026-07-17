@@ -38,6 +38,10 @@ import Testing
     #expect(Compose.substitute("keep {this}", values: [:]) == "keep {this}")
 }
 
+@Test func substituteDoesNotResubstituteInsertedValues() {
+    #expect(Compose.substitute("{a} {b}", values: ["a": "{b}", "b": "x"]) == "{b} x")
+}
+
 // MARK: - activePlaceholders
 
 @Test func activePlaceholdersMatchesEmittedTemplate() {
@@ -46,6 +50,13 @@ import Testing
         negative: "skip it", placeholders: ["link"])
     #expect(Compose.activePlaceholders(block, negated: false) == ["link"])
     #expect(Compose.activePlaceholders(block, negated: true) == [])
+}
+
+// A repeated name would otherwise be prompted for forever: the answers
+// land in a dictionary, whose count can never reach the list's.
+@Test func activePlaceholdersDedupsRepeatedNames() {
+    let block = Block(key: "i", desc: "", text: "go {a}", placeholders: ["a", "a"])
+    #expect(Compose.activePlaceholders(block, negated: false) == ["a"])
 }
 
 // MARK: - placeholderHints

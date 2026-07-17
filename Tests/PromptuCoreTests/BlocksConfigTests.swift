@@ -53,7 +53,7 @@ private func tempDir() throws -> URL {
 
     let blocks = try BlocksConfig.loadOrSeed(file)
     #expect(blocks.count == 10)
-    #expect(try String(contentsOf: file, encoding: .utf8) == BlocksConfig.defaultBlocksJSON)
+    #expect(try String(contentsOf: file, encoding: .utf8) == BlocksConfig.defaultBlocksJSON + "\n")
 }
 
 @Test func loadOrSeedLeavesExistingFileAlone() throws {
@@ -75,15 +75,17 @@ private func tempDir() throws -> URL {
 @Test func saveRoundtripsBlocksWithSpecialCharacters() throws {
     let dir = try tempDir()
     defer { try? FileManager.default.removeItem(at: dir) }
-    let file = dir.appendingPathComponent("blocks.json")
+    // Nested path: saving also creates a missing parent directory.
+    let file = dir.appendingPathComponent("nested/blocks.json")
     let blocks = [
         Block(
-            key: "x", desc: "say \"hi\"", text: "line\nbreak\tand \\slash",
+            key: "x", desc: "say \"hi\"", text: "line\nbreak\tand \\slash\r\u{1}control",
             negative: "don't", placeholders: ["a", "b"])
     ]
 
     try BlocksConfig.save(blocks, to: file)
     #expect(try BlocksConfig.load(file) == blocks)
+    #expect(try String(contentsOf: file, encoding: .utf8).hasSuffix("]\n"))
 }
 
 @Test func loadOrSeedThrowsOnMalformedFileWithoutOverwriting() throws {

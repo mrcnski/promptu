@@ -9,18 +9,27 @@ public enum Compose {
         negated ? block.negative ?? negationPrefix + block.text : block.text
     }
 
-    /// Replace each {name} in the template with its value.
+    /// Replace each {name} in the template with its value.  A single
+    /// left-to-right pass, so braces inside an inserted value stay
+    /// literal instead of being substituted again.
     public static func substitute(_ template: String, values: [String: String]) -> String {
-        values.reduce(template) { result, entry in
-            result.replacingOccurrences(of: "{\(entry.key)}", with: entry.value)
+        template.replacing(/\{([^{}]+)\}/) { match in
+            values[String(match.1)] ?? String(match.0)
         }
     }
 
     /// The block's placeholder names that appear as {name} in the template
     /// it emits when (not) negated.  Only these are worth prompting for.
+    /// Deduplicated: a name repeated in a hand-edited placeholders field
+    /// must still be asked for only once.
     public static func activePlaceholders(_ block: Block, negated: Bool) -> [String] {
         let template = resolve(block, negated: negated)
-        return (block.placeholders ?? []).filter { template.contains("{\($0)}") }
+        var names: [String] = []
+        for name in block.placeholders ?? []
+        where template.contains("{\(name)}") && !names.contains(name) {
+            names.append(name)
+        }
+        return names
     }
 
     /// The block's placeholders as menu hints, "<name> <name>", or nil

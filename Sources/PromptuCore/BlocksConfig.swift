@@ -28,7 +28,9 @@ public enum BlocksConfig {
     }
 
     public static func save(_ blocks: [Block], to url: URL = defaultURL) throws {
-        try Data(serialize(blocks).utf8).write(to: url, options: .atomic)
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data((serialize(blocks) + "\n").utf8).write(to: url, options: .atomic)
     }
 
     /// blocks.json text in the house style — one block per line, fields
@@ -81,7 +83,7 @@ public enum BlocksConfig {
         if !FileManager.default.fileExists(atPath: url.path) {
             try FileManager.default.createDirectory(
                 at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try Data(defaultBlocksJSON.utf8).write(to: url)
+            try Data((defaultBlocksJSON + "\n").utf8).write(to: url, options: .atomic)
         }
         return try load(url)
     }
