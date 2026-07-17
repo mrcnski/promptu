@@ -1,5 +1,5 @@
 APP := Promptu.app
-BIN := .build/release/PromptuBar
+BIN := .build/release/Promptu
 ICONSET := .build/AppIcon.iconset
 VERSION := $(shell /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Info.plist)
 
@@ -12,7 +12,7 @@ app: icon
 	rm -rf dist/$(APP)
 	mkdir -p dist/$(APP)/Contents/MacOS dist/$(APP)/Contents/Resources
 	cp Info.plist dist/$(APP)/Contents/Info.plist
-	cp $(BIN) dist/$(APP)/Contents/MacOS/PromptuBar
+	cp $(BIN) dist/$(APP)/Contents/MacOS/Promptu
 	cp .build/AppIcon.icns dist/$(APP)/Contents/Resources/AppIcon.icns
 	codesign --force --sign - dist/$(APP)
 

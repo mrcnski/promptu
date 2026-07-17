@@ -2,11 +2,11 @@
 import PackageDescription
 
 let package = Package(
-    name: "promptu-app",
+    name: "promptu",
     platforms: [.macOS(.v14)],
     targets: [
         .target(name: "PromptuCore"),
-        .executableTarget(name: "PromptuBar", dependencies: ["PromptuCore"]),
+        .executableTarget(name: "Promptu", dependencies: ["PromptuCore"]),
         .testTarget(name: "PromptuCoreTests", dependencies: ["PromptuCore"]),
     ]
 )

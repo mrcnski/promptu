@@ -1,7 +1,7 @@
 <div align="center">
   <img src="mascot.svg" alt="promptu mascot — a friendly creature built from stacked terminal blocks" width="180"/>
 
-# promptu-app
+# promptu
 
 Compose LLM prompts from building blocks, right from the menubar!
 
@@ -32,7 +32,7 @@ brew install --cask mrcnski/tap/promptu
 ```
 
 Or download `Promptu-<version>.zip` from
-[Releases](https://github.com/mrcnski/promptu-app/releases), unzip, and
+[Releases](https://github.com/mrcnski/promptu/releases), unzip, and
 drag Promptu.app into /Applications.
 
 Either way, the app is ad-hoc signed and not notarized, so macOS
@@ -92,8 +92,8 @@ settings toggle if you want one.
 
 ## See also
 
-- The original [Emacs package](https://github.com/mrcnski/promptu) that started
-  it all!
+- The original [Emacs package](https://github.com/mrcnski/promptu.el) that
+  started it all!
 
 ## License
 
