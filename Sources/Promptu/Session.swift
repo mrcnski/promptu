@@ -167,6 +167,21 @@ final class Session: ObservableObject {
         draft = d
     }
 
+    /// One step of a live drag reorder: move the dragged block into the
+    /// hovered block's slot and save the new order. A failed save only
+    /// logs — the order still holds in memory, and the next successful
+    /// save writes it out.
+    func moveBlock(_ key: String, over target: String) {
+        let moved = blocks.moving(key, over: target)
+        guard moved != blocks else { return }
+        blocks = moved
+        do {
+            try BlocksConfig.save(blocks)
+        } catch {
+            NSLog("promptu: can't save block order: \(error.localizedDescription)")
+        }
+    }
+
     func deleteDraftBlock() {
         guard let originalKey = draft?.originalKey else {
             draft = nil

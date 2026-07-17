@@ -7,6 +7,7 @@ struct BlockEditorView: View {
     @ObservedObject var session: Session
     let theme: Theme
     @FocusState.Binding var fieldFocused: Bool
+    @State private var draggingKey: String?
 
     var body: some View {
         if session.draft != nil {
@@ -27,8 +28,10 @@ struct BlockEditorView: View {
                             row(block).frame(maxWidth: .infinity, alignment: .leading)
                         }
                         .buttonStyle(HoverButtonStyle(theme: theme))
+                        .blockReorderable(block, draggingKey: $draggingKey, session: session)
                     }
                 }
+                .animation(.default, value: session.blocks)
             }
             .frame(maxHeight: 300)
             Button {

@@ -8,6 +8,7 @@ struct ComposerView: View {
     let close: () -> Void
     @FocusState private var keysFocused: Bool
     @FocusState private var fieldFocused: Bool
+    @State private var draggingKey: String?
     @Environment(\.colorScheme) private var colorScheme
     @AppStorage(ThemeChoice.defaultsKey) private var themeChoice = ThemeChoice.system
 
@@ -117,8 +118,10 @@ struct ComposerView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(HoverButtonStyle(theme: theme))
+                .blockReorderable(block, draggingKey: $draggingKey, session: session)
             }
         }
+        .animation(.default, value: session.blocks)
     }
 
     /// The block's menu label: its desc plus colored <placeholder> hints,
