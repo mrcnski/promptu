@@ -178,6 +178,11 @@ private struct BlockRow<Content: View>: View {
     var body: some View {
         HStack(spacing: 0) {
             content.frame(maxWidth: .infinity, alignment: .leading)
+            // Reserves the grip's width; the visible grip is overlaid
+            // below so its hit target spans the row's full height.
+            Grip(theme: theme).hidden()
+        }
+        .overlay(alignment: .trailing) {
             Grip(theme: theme).gesture(drag)
         }
         .padding(.horizontal, 6)

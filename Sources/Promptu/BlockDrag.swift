@@ -1,7 +1,9 @@
 import SwiftUI
 
 /// The ≡ icon marking a draggable row; the drag itself is attached by
-/// the caller.
+/// the caller. Fills whatever height it is proposed, so an overlaid
+/// grip catches clicks across the row's full height, not just the
+/// icon's.
 struct Grip: View {
     let theme: Theme
 
@@ -10,6 +12,7 @@ struct Grip: View {
             .font(.caption)
             .foregroundStyle(theme.dimmed)
             .padding(.horizontal, 6)
+            .frame(maxHeight: .infinity)
             .contentShape(Rectangle())
     }
 }
