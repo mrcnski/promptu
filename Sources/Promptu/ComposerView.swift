@@ -258,20 +258,7 @@ struct ComposerView: View {
     }
 
     private var editField: some View {
-        TextField(
-            "edit entry",
-            text: Binding(
-                get: { session.editInput ?? "" },
-                set: { session.editInput = $0 }
-            )
-        )
-        .textFieldStyle(.plain)
-        .foregroundStyle(theme.foreground)
-        .padding(6)
-        .background(theme.surface, in: RoundedRectangle(cornerRadius: 6))
-        .focused($fieldFocused)
-        .onSubmit { session.submitEdit() }
-        .onExitCommand { session.cancelEdit() }
+        EditField(session: session, theme: theme, fieldFocused: $fieldFocused)
     }
 
     /// One "key action" hint, two-tone: the key bright, the label dimmed.
@@ -473,6 +460,29 @@ struct ComposerView: View {
             return .handled
         }
         return .ignored
+    }
+}
+
+/// The entry-edit field. Its live text is local state, committed only
+/// on submit: routing keystrokes through the session would re-render
+/// the whole panel per key, and the field's end-editing write-back on
+/// teardown would fight submitEdit's close (the old enter-twice bug).
+private struct EditField: View {
+    @ObservedObject var session: Session
+    let theme: Theme
+    @FocusState.Binding var fieldFocused: Bool
+    @State private var text = ""
+
+    var body: some View {
+        TextField("edit entry", text: $text)
+            .textFieldStyle(.plain)
+            .foregroundStyle(theme.foreground)
+            .padding(6)
+            .background(theme.surface, in: RoundedRectangle(cornerRadius: 6))
+            .focused($fieldFocused)
+            .onAppear { text = session.editInput ?? "" }
+            .onSubmit { session.submitEdit(text) }
+            .onExitCommand { session.cancelEdit() }
     }
 }
 

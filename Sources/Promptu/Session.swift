@@ -32,7 +32,9 @@ final class Session: ObservableObject {
     @Published private var composition = Composition()
     @Published var negateNext = false
     @Published var pending: Pending?
-    /// Text being edited for the entry above the point, nil when not editing.
+    /// The entry text an open edit started from, nil when no edit is
+    /// open. Only the seed: the field keeps its live text locally and
+    /// commits it through submitEdit.
     @Published var editInput: String?
     /// Which screen the popover shows.
     @Published var screen = Screen.composer
@@ -99,8 +101,8 @@ final class Session: ObservableObject {
 
     /// Blank input leaves the entry unchanged; removing an entry is
     /// backspace's job.
-    func submitEdit() {
-        if let text = editInput, !text.trimmingCharacters(in: .whitespaces).isEmpty {
+    func submitEdit(_ text: String) {
+        if !text.trimmingCharacters(in: .whitespaces).isEmpty {
             composition.replaceEntry(with: text)
         }
         editInput = nil
