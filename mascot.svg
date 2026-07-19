@@ -1,6 +1,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 206" width="200" height="206" role="img" aria-label="promptu mascot: a friendly creature built from stacked terminal blocks">
   <title>promptu — stacked-terminal creature</title>
 
+  <style>
+    .caret {
+      animation: caret-blink 1.2s steps(1) infinite;
+    }
+    @keyframes caret-blink {
+      50% { opacity: 0; }
+    }
+    .eye {
+      transform-box: fill-box;
+      transform-origin: 50% 50%;
+      animation: eye-blink 5s infinite;
+    }
+    @keyframes eye-blink {
+      0%, 91%, 97%, 100% { transform: scaleY(1); }
+      93%, 95% { transform: scaleY(0.15); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .caret, .eye { animation: none; }
+    }
+  </style>
+
   <!-- mint badge background -->
   <rect x="6" y="4" width="188" height="198" rx="28" fill="#e3f2ee"/>
 
@@ -21,8 +42,8 @@
     <circle cx="73" cy="42.5" r="2.8" fill="#F2B441"/>
     <circle cx="82" cy="42.5" r="2.8" fill="#5BC8AF"/>
     <!-- eyes -->
-    <rect x="79" y="54" width="7" height="10" rx="2" fill="#5BC8AF"/>
-    <rect x="114" y="54" width="7" height="10" rx="2" fill="#5BC8AF"/>
+    <rect class="eye" x="79" y="54" width="7" height="10" rx="2" fill="#5BC8AF"/>
+    <rect class="eye" x="114" y="54" width="7" height="10" rx="2" fill="#5BC8AF"/>
     <!-- smile -->
     <path d="M92 69 Q100 74 108 69" fill="none" stroke="#5BC8AF" stroke-width="2.5" stroke-linecap="round"/>
   </g>
@@ -33,7 +54,7 @@
     <rect x="52" y="90" width="4" height="28" rx="2" fill="#F2B441"/>
     <path d="M62 98 l6 4.5 l-6 4.5" fill="none" stroke="#5BC8AF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
     <rect x="76" y="99" width="36" height="5" rx="2.5" fill="#F2B441"/>
-    <rect x="118" y="96" width="5" height="11" fill="#9B8CFF"/>
+    <rect class="caret" x="118" y="96" width="5" height="11" fill="#9B8CFF"/>
     <rect x="62" y="112" width="44" height="5" rx="2.5" fill="#7c8198"/>
   </g>
 
