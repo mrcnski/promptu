@@ -349,16 +349,26 @@ struct ComposerView: View {
     }
 
     /// A hint that is also a clickable button. Like the keys it mirrors,
-    /// it is inert while a text field has the focus.
+    /// it is inert — and grayed out — while a text field has the focus
+    /// or while `enabled` says its action can't apply right now.
     private func hintButton(
-        _ key: String, _ label: String, action: @escaping () -> Void
+        _ key: String, _ label: String, enabled: Bool = true,
+        action: @escaping () -> Void
     ) -> some View {
-        Button {
-            if !fieldShown { action() }
+        let available = enabled && !fieldShown
+        return Button {
+            if available { action() }
         } label: {
             hint(key, label)
         }
         .buttonStyle(HoverButtonStyle(theme: theme, horizontalPadding: 3))
+        .opacity(available ? 1 : 0.4)
+        .allowsHitTesting(available)
+    }
+
+    /// A short vertical rule separating the footer's hint clusters.
+    private var hintDivider: some View {
+        Divider().frame(height: 12).overlay(theme.dimmed.opacity(0.3))
     }
 
     private var footer: some View {
@@ -402,13 +412,23 @@ struct ComposerView: View {
                 HStack {
                     hintButton("-", "negate") { session.negateNext.toggle() }
                     Spacer()
-                    hintButton("⌫", "remove") { session.removeEntry() }
+                    hintDivider
+                    Spacer()
+                    hintButton("⌫", "remove", enabled: session.hasTarget) {
+                        session.removeEntry()
+                    }
+                    Spacer()
+                    hintButton("⌘E", "edit", enabled: session.hasTarget) {
+                        session.beginEdit()
+                    }
+                    Spacer()
+                    hintButton("⇧⌘E", "edit all", enabled: !session.isEmpty) {
+                        session.beginEditAll()
+                    }
+                    Spacer()
+                    hintDivider
                     Spacer()
                     pointHint
-                    Spacer()
-                    hintButton("⌘E", "edit") { session.beginEdit() }
-                    Spacer()
-                    hintButton("⇧⌘E", "edit all") { session.beginEditAll() }
                 }
             }
             HStack {
@@ -425,22 +445,34 @@ struct ComposerView: View {
                     .keyboardShortcut("q", modifiers: .command)
                 Spacer()
                 if session.screen == .composer {
-                    hintButton("⌘Z", "undo") { session.undo() }
-                    hintButton("⏎", "copy") { if session.finish() { close() } }
+                    hintButton("⌘Z", "undo", enabled: session.canUndo) { session.undo() }
+                    hintButton("⏎", "copy", enabled: !session.isEmpty) {
+                        if session.finish() { close() }
+                    }
                 }
             }
         }
     }
 
-    /// The point hint: each arrow is its own little button.
+    /// The point hint: each arrow is its own little button, grayed out
+    /// when the point can't move that way.
     private var pointHint: some View {
         HStack(spacing: 2) {
-            Button { if !fieldShown { session.pointUp() } } label: { hintKey("↑") }
-                .buttonStyle(HoverButtonStyle(theme: theme, horizontalPadding: 3))
-            Button { if !fieldShown { session.pointDown() } } label: { hintKey("↓") }
-                .buttonStyle(HoverButtonStyle(theme: theme, horizontalPadding: 3))
+            pointArrow("↑", enabled: session.canPointUp) { session.pointUp() }
+            pointArrow("↓", enabled: session.canPointDown) { session.pointDown() }
             Text("point").font(.caption).foregroundStyle(theme.dimmed)
+                .opacity(session.isEmpty || fieldShown ? 0.4 : 1)
         }
+    }
+
+    private func pointArrow(
+        _ key: String, enabled: Bool, move: @escaping () -> Void
+    ) -> some View {
+        let available = enabled && !fieldShown
+        return Button { if available { move() } } label: { hintKey(key) }
+            .buttonStyle(HoverButtonStyle(theme: theme, horizontalPadding: 3))
+            .opacity(available ? 1 : 0.4)
+            .allowsHitTesting(available)
     }
 
     private func handleKey(_ press: KeyPress) -> KeyPress.Result {

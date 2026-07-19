@@ -197,8 +197,11 @@ import Testing
 
 @Test func undoOnFreshCompositionIsNoop() {
     var c = Composition()
+    #expect(!c.canUndo)
     c.undo()
     #expect(c.entries.isEmpty)
+    c.add("a")
+    #expect(c.canUndo)
 }
 
 // MARK: - preview

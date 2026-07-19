@@ -29,6 +29,9 @@ public struct Composition: Equatable, Sendable {
     /// The entry above the point, the one editing and removal act on.
     public var targetEntry: String? { targetIndex.map { entries[$0] } }
 
+    /// Whether there is a change to undo.
+    public var canUndo: Bool { !undoStack.isEmpty }
+
     public var composed: String { Compose.compose(entries) }
 
     /// The composed prompt with ▮ at a moved point's gap, on its own

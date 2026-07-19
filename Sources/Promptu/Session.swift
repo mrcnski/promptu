@@ -58,6 +58,13 @@ final class Session: ObservableObject {
     /// The gap the point sits at, nil at the end (no marker shown).
     var pointGap: Int? { composition.point }
 
+    /// Whether an entry sits above the point — the one remove and
+    /// edit act on.
+    var hasTarget: Bool { composition.targetEntry != nil }
+    var canUndo: Bool { composition.canUndo }
+    var canPointUp: Bool { composition.pointIndex > 0 }
+    var canPointDown: Bool { composition.point != nil }
+
     func moveEntry(from: Int, to: Int) { composition.moveEntry(from: from, to: to) }
 
     func add(_ block: Block) {
