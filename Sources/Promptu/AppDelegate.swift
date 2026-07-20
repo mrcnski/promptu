@@ -123,11 +123,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     /// click outside, say) never runs the recorder's cleanup, which
     /// would leave the hotkey suspended for good. Re-registering is
     /// cheap and idempotent, so just always do it on close.
+    ///
+    /// Deferred to the next runloop turn: with animations off this
+    /// delegate fires synchronously inside the hotkey's own Carbon
+    /// dispatch, and re-registering there would RemoveEventHandler on
+    /// the handler still executing — killing the hotkey after one use.
     func popoverDidClose(_ notification: Notification) {
-        registerHotKey()
-        if hideWhenClosed {
-            hideWhenClosed = false
-            NSApp.hide(nil)
+        let hide = hideWhenClosed
+        hideWhenClosed = false
+        DispatchQueue.main.async { [weak self] in
+            self?.registerHotKey()
+            if hide { NSApp.hide(nil) }
         }
     }
 
