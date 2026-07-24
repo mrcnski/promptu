@@ -4,7 +4,8 @@ import ServiceManagement
 import SwiftUI
 
 /// In-popover settings: the theme choice, animations, the global
-/// hotkey, and launch at login.
+/// hotkey, launch at login, and the update check — including the
+/// running version and a check that can be started by hand.
 struct SettingsView: View {
     let theme: Theme
     @ObservedObject var updateChecker: UpdateChecker
@@ -96,9 +97,68 @@ struct SettingsView: View {
                     .buttonStyle(HoverButtonStyle(theme: theme))
                 }
             }
+
+            Text("version").font(.caption).foregroundStyle(theme.dimmed)
+            // The check-now button is the tallest thing in this row and
+            // is always present, so the status text swapping between
+            // its states never changes the row's height — a height
+            // change here would resize the popover and flash the panel.
+            HStack(spacing: 8) {
+                Text(UpdateChecker.currentVersion)
+                    .font(.callout.monospaced().bold())
+                    .foregroundStyle(theme.foreground)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(theme.surface, in: RoundedRectangle(cornerRadius: 5))
+                updateStatus
+                Spacer()
+                // Grayed out rather than hidden while the check is off:
+                // off means no pings to GitHub, by hand or otherwise.
+                Button { updateChecker.checkNow() } label: {
+                    Text("check now").font(.callout).foregroundStyle(theme.key)
+                }
+                .buttonStyle(HoverButtonStyle(theme: theme))
+                .opacity(updateChecker.enabled ? 1 : 0.4)
+                .allowsHitTesting(updateChecker.enabled)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .onDisappear { stopRecording() }
+    }
+
+    /// What the last check found, beside the version. A known update
+    /// wins over a failed check: the cached answer is still the useful
+    /// one, and the failure is only about its age.
+    @ViewBuilder private var updateStatus: some View {
+        if !updateChecker.enabled {
+            statusText("checks off")
+        } else if updateChecker.status == .checking {
+            statusText("checking…")
+        } else if let update = updateChecker.latestKnown {
+            Button { NSWorkspace.shared.open(update.url) } label: {
+                Text("v\(update.version) available →")
+                    .font(.caption)
+                    .foregroundStyle(theme.notice)
+            }
+            .buttonStyle(HoverButtonStyle(theme: theme, horizontalPadding: 4))
+            .help(lastCheckHelp)
+        } else if updateChecker.status == .failed {
+            statusText("check failed")
+        } else if updateChecker.lastCheck == nil {
+            statusText("not checked yet")
+        } else {
+            statusText("up to date")
+        }
+    }
+
+    private func statusText(_ label: String) -> some View {
+        Text(label).font(.caption).foregroundStyle(theme.dimmed).help(lastCheckHelp)
+    }
+
+    /// The status's tooltip: how old the answer is.
+    private var lastCheckHelp: String {
+        guard let date = updateChecker.lastCheck else { return "no successful check yet" }
+        return "last checked \(date.formatted(date: .abbreviated, time: .shortened))"
     }
 
     private func setLaunchAtLogin(_ enabled: Bool) {
