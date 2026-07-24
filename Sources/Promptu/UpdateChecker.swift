@@ -15,6 +15,10 @@ final class UpdateChecker: ObservableObject {
     }
 
     @Published private(set) var available: Update?
+    /// Whether the periodic check runs; off stops the GitHub pings.
+    /// Published rather than read from UserDefaults on demand, so the
+    /// settings toggle renders it right on its first frame.
+    @Published private(set) var enabled: Bool
 
     private let disabledKey = "updateCheckDisabled"
     private let lastCheckKey = "updateLastCheck"
@@ -37,15 +41,14 @@ final class UpdateChecker: ObservableObject {
     private var panelIsOpen = false
 
     init() {
+        enabled = !defaults.bool(forKey: disabledKey)
         // Surface a previously fetched result immediately, before any
         // network round-trip — the notice shouldn't wait for the poll.
         refreshAvailable()
     }
 
-    /// Whether the periodic check runs; off stops the GitHub pings.
-    var enabled: Bool { !defaults.bool(forKey: disabledKey) }
-
     func setEnabled(_ on: Bool) {
+        enabled = on
         defaults.set(!on, forKey: disabledKey)
         if on {
             checkIfDue()
