@@ -93,6 +93,17 @@ public struct Composition: Equatable, Sendable {
         point = nil
     }
 
+    /// Replace every entry, as recalling a past prompt does; the point
+    /// ends at the end. `checkpoint` is false while stepping through
+    /// history: only the first step saves the prompt that was in
+    /// progress, so one undo returns to it however far the stepping
+    /// went, and the undo stack doesn't fill with steps.
+    public mutating func load(_ recalled: [String], checkpoint shouldCheckpoint: Bool) {
+        if shouldCheckpoint { checkpoint() }
+        entries = recalled
+        point = nil
+    }
+
     /// Move the entry at `from` to index `to` (its index once the entry
     /// has been removed); the point ends past the moved entry, as after
     /// add. No-op when the move changes nothing.

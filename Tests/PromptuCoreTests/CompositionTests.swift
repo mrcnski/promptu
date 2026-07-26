@@ -112,6 +112,45 @@ import Testing
     #expect(c.entries.isEmpty)
 }
 
+// MARK: - load
+
+@Test func loadReplacesEveryEntryAndPutsPointAtEnd() {
+    var c = Composition()
+    c.add("a")
+    c.pointUp()
+    c.load(["x", "y"], checkpoint: true)
+    #expect(c.entries == ["x", "y"])
+    #expect(c.point == nil)
+}
+
+@Test func checkpointedLoadIsUndoable() {
+    var c = Composition()
+    c.add("draft")
+    c.load(["recalled"], checkpoint: true)
+    c.undo()
+    #expect(c.entries == ["draft"])
+}
+
+/// A history walk checkpoints only on its first step, so one undo
+/// returns to the prompt in progress however far the walk went.
+@Test func uncheckpointedLoadKeepsOneUndoBackToTheDraft() {
+    var c = Composition()
+    c.add("draft")
+    c.load(["first"], checkpoint: true)
+    c.load(["second"], checkpoint: false)
+    c.load(["third"], checkpoint: false)
+    c.undo()
+    #expect(c.entries == ["draft"])
+}
+
+@Test func loadIntoAnEmptyCompositionUndoesToEmpty() {
+    var c = Composition()
+    c.load(["x"], checkpoint: true)
+    #expect(c.entries == ["x"])
+    c.undo()
+    #expect(c.entries.isEmpty)
+}
+
 // MARK: - move
 
 @Test func moveEntryForwardPutsPointPastIt() {
