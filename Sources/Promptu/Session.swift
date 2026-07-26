@@ -60,7 +60,8 @@ final class Session: ObservableObject {
     @Published private(set) var historySelection = 0
     /// How far a ⌥↑/⌥↓ walk through history has gone, nil when not
     /// walking — the next walk then starts over at the newest prompt.
-    @Published private(set) var historyIndex: Int?
+    /// Nothing renders it: the walk shows through the preview.
+    private var historyIndex: Int?
 
     private static let historyKey = "promptHistory"
     private static let historyDisabledKey = "historyDisabled"
@@ -282,6 +283,9 @@ final class Session: ObservableObject {
     /// to restore the prompt that was in progress.
     func stepHistory(_ delta: Int) {
         guard !history.isEmpty else { return }
+        // As on recall: a leftover armed negation belonged to the
+        // prompt that was on screen a moment ago.
+        negateNext = false
         guard let index = historyIndex else {
             guard delta > 0 else { return }
             composition.load(history.prompts[0], checkpoint: true)
