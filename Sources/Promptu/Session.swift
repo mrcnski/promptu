@@ -266,12 +266,14 @@ final class Session: ObservableObject {
         setScreen(.composer)
     }
 
-    /// Recall and copy in one step — "that prompt again", which is
-    /// most of what history is for.
-    func recallAndFinish(_ index: Int) -> Bool {
+    /// Copy a past prompt to the clipboard without touching the
+    /// composition: the prompt in progress is not this one's to throw
+    /// away, and finish would clear it past recovering. Copying
+    /// re-records it, so reuse moves it back to the front.
+    func copyHistory(_ index: Int) -> Bool {
         guard history.prompts.indices.contains(index) else { return false }
-        recall(index)
-        return finish()
+        copyToClipboard(history.prompts[index])
+        return true
     }
 
     /// Walk through past prompts in the composer: `delta` +1 older, -1
@@ -411,16 +413,21 @@ final class Session: ObservableObject {
         }
     }
 
-    /// Copy the composed prompt to the clipboard, record it in history,
-    /// and start over. Returns false (and does nothing) when the prompt
-    /// is empty. Copying is the one moment a prompt is worth keeping —
-    /// recording on close would fill history with abandoned drafts.
-    func finish() -> Bool {
-        guard !isEmpty else { return false }
+    /// Compose the entries onto the clipboard and record them. Copying
+    /// is the one moment a prompt is worth keeping — recording on close
+    /// would fill history with abandoned drafts.
+    private func copyToClipboard(_ entries: [String]) {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        pasteboard.setString(composition.composed, forType: .string)
-        recordHistory(composition.entries)
+        pasteboard.setString(Compose.compose(entries), forType: .string)
+        recordHistory(entries)
+    }
+
+    /// Copy the composed prompt to the clipboard and start over.
+    /// Returns false (and does nothing) when the prompt is empty.
+    func finish() -> Bool {
+        guard !isEmpty else { return false }
+        copyToClipboard(composition.entries)
         leaveHistory()
         composition = Composition()
         negateNext = false

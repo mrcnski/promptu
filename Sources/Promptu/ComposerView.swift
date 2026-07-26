@@ -411,7 +411,7 @@ struct ComposerView: View {
             return .handled
         case .return:
             if command {
-                if session.recallAndFinish(session.historySelection) { close() }
+                if session.copyHistory(session.historySelection) { close() }
             } else {
                 session.recall(session.historySelection)
             }
@@ -528,7 +528,7 @@ struct ComposerView: View {
                     }
                     Spacer()
                     hintButton("⌘⏎", "copy", enabled: stocked) {
-                        if session.recallAndFinish(session.historySelection) { close() }
+                        if session.copyHistory(session.historySelection) { close() }
                     }
                     Spacer()
                     hintButton("⌫", "forget", enabled: stocked) {
