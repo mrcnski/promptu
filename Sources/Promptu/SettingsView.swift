@@ -4,11 +4,17 @@ import ServiceManagement
 import SwiftUI
 
 /// In-popover settings: the theme choice, animations, the global
-/// hotkey, launch at login, and the update check — including the
-/// running version and a check that can be started by hand.
+/// hotkey, launch at login, prompt history, and the update check —
+/// including the running version and a check that can be started by
+/// hand.
 struct SettingsView: View {
     let theme: Theme
+    @ObservedObject var session: Session
     @ObservedObject var updateChecker: UpdateChecker
+    /// Whether the clear button is showing its confirmation. Clearing
+    /// can't be undone, so it takes two clicks; the label swaps in
+    /// place, leaving the row's height alone.
+    @State private var confirmClear = false
     @AppStorage(ThemeChoice.defaultsKey) private var themeChoice = ThemeChoice.system
     @State private var hotKeyDisplay = HotKeySpec.load().display
     @State private var recording = false
@@ -85,6 +91,54 @@ struct SettingsView: View {
                 Text(error).font(.caption).foregroundStyle(theme.error)
             }
 
+            Text("remember prompts").font(.caption).foregroundStyle(theme.dimmed)
+            // The note belongs to the switch above it, not to the
+            // section below: every label in this panel is a dimmed
+            // caption with the full spacing around it, so the note
+            // hugs its own row and sits a size smaller to keep from
+            // reading as the next one's heading.
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 2) {
+                    ForEach([true, false], id: \.self) { on in
+                        Button { session.setHistoryOn(on) } label: {
+                            Text(on ? "on" : "off")
+                                .font(on == session.historyOn ? .callout.bold() : .callout)
+                                .foregroundStyle(
+                                    on == session.historyOn ? theme.key : theme.dimmed)
+                        }
+                        .buttonStyle(HoverButtonStyle(theme: theme))
+                    }
+                    Spacer()
+                    Text(historyCount)
+                        .font(.caption)
+                        .foregroundStyle(theme.dimmed)
+                    // The one destructive control in the panel, so it
+                    // asks once; the whole row is grayed out with
+                    // nothing to clear.
+                    Button {
+                        if confirmClear {
+                            session.clearHistory()
+                            confirmClear = false
+                        } else {
+                            confirmClear = true
+                        }
+                    } label: {
+                        Text(confirmClear ? "click again to clear" : "clear")
+                            .font(.callout)
+                            .foregroundStyle(confirmClear ? theme.error : theme.key)
+                    }
+                    .buttonStyle(HoverButtonStyle(theme: theme))
+                    .opacity(session.history.isEmpty ? 0.4 : 1)
+                    .allowsHitTesting(!session.history.isEmpty)
+                }
+                // Plain, because a copied prompt carries whatever was
+                // typed into its placeholders.
+                Text("kept on this Mac in plain text, values included")
+                    .font(.caption2)
+                    .foregroundStyle(theme.dimmed.opacity(0.75))
+                    .padding(.leading, 6)
+            }
+
             Text("check for updates").font(.caption).foregroundStyle(theme.dimmed)
             HStack(spacing: 2) {
                 ForEach([true, false], id: \.self) { on in
@@ -123,7 +177,16 @@ struct SettingsView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .onDisappear { stopRecording() }
+        .onDisappear {
+            stopRecording()
+            confirmClear = false
+        }
+    }
+
+    /// How much history is stored, beside the clear button.
+    private var historyCount: String {
+        let count = session.history.count
+        return count == 1 ? "1 prompt" : "\(count) prompts"
     }
 
     /// What the last check found, beside the version. A known update

@@ -76,6 +76,19 @@ library](https://code.claude.com/docs/en/prompt-library).  They are seeded once
 on first launch; delete a file to drop its page (it stays gone), or add your own
 `.json` to gain one.
 
+## History
+
+By default, every prompt you copy is stored so you can reuse it again later.
+`⌘Y` opens the history view.
+
+A recalled prompt acts like a real composition again and its entries can be
+removed, reordered, and edited.
+
+**Note:** The last 50 prompts are kept on your Mac, in plain text, including
+whatever you typed into placeholders.  Settings has a "remember prompts" switch
+("off" stops recording, but anything already stored stays until cleared in
+settings or the history view).
+
 ## Build
 
 ```sh
@@ -95,7 +108,6 @@ settings toggle if you want one.
 
 ## Todo
 
-- History
 - Custom separator / negation prefix (fixed at `"\n- "` / `"don't "`)
 - Universal (Intel + Apple Silicon) release binaries — needs full Xcode
   for `swift build --arch arm64 --arch x86_64`; releases are currently

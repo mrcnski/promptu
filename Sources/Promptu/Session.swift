@@ -50,7 +50,22 @@ final class Session: ObservableObject {
     @Published var screen = Screen.composer
     @Published var draft: Draft?
 
-    enum Screen { case composer, editor, settings }
+    /// The prompts already copied, newest first.
+    @Published private(set) var history: History
+    /// Whether copying records the prompt. Off leaves what is already
+    /// stored in place — erasing it is `clearHistory`'s job, not a
+    /// side effect of flipping a switch.
+    @Published private(set) var historyOn: Bool
+    /// Which row the history screen has selected.
+    @Published private(set) var historySelection = 0
+    /// How far a ⌥↑/⌥↓ walk through history has gone, nil when not
+    /// walking — the next walk then starts over at the newest prompt.
+    @Published private(set) var historyIndex: Int?
+
+    private static let historyKey = "promptHistory"
+    private static let historyDisabledKey = "historyDisabled"
+
+    enum Screen { case composer, editor, settings, history }
 
     init() {
         // Seed the bundled preset pages once: deleting one afterwards
@@ -60,6 +75,11 @@ final class Session: ObservableObject {
             store.set(true, forKey: "presetsSeeded")
             try? Presets.seed()
         }
+
+        // Plain nested arrays of strings, so the list is a property
+        // list and needs no encoding of its own.
+        history = History(store.array(forKey: Self.historyKey) as? [[String]] ?? [])
+        historyOn = !store.bool(forKey: Self.historyDisabledKey)
 
         var pages: [Page] = []
         var loadError: String?
@@ -112,9 +132,13 @@ final class Session: ObservableObject {
     var canPointUp: Bool { composition.pointIndex > 0 }
     var canPointDown: Bool { composition.point != nil }
 
-    func moveEntry(from: Int, to: Int) { composition.moveEntry(from: from, to: to) }
+    func moveEntry(from: Int, to: Int) {
+        leaveHistory()
+        composition.moveEntry(from: from, to: to)
+    }
 
     func add(_ block: Block) {
+        leaveHistory()
         let negated = negateNext
         negateNext = false
         let names = Compose.activePlaceholders(block, negated: negated)
@@ -143,11 +167,20 @@ final class Session: ObservableObject {
         pending = nil
     }
 
-    func removeEntry() { composition.removeEntry() }
+    func removeEntry() {
+        leaveHistory()
+        composition.removeEntry()
+    }
     func pointUp() { composition.pointUp() }
     func pointDown() { composition.pointDown() }
-    func undo() { composition.undo() }
-    func redo() { composition.redo() }
+    func undo() {
+        leaveHistory()
+        composition.undo()
+    }
+    func redo() {
+        leaveHistory()
+        composition.redo()
+    }
 
     /// Whether the open edit spans the whole prompt: submitting then
     /// replaces every entry with the field's text.
@@ -172,6 +205,7 @@ final class Session: ObservableObject {
     /// Blank input leaves the prompt unchanged; removing an entry is
     /// backspace's job.
     func submitEdit(_ text: String) {
+        leaveHistory()
         if !text.trimmingCharacters(in: .whitespaces).isEmpty {
             editingAll
                 ? composition.replaceAll(with: text)
@@ -184,6 +218,88 @@ final class Session: ObservableObject {
         editInput = nil
     }
 
+    // MARK: - History
+
+    /// Record a copied prompt, when history is on.
+    private func recordHistory(_ entries: [String]) {
+        guard historyOn else { return }
+        history.record(entries)
+        saveHistory()
+    }
+
+    private func saveHistory() {
+        UserDefaults.standard.set(history.prompts, forKey: Self.historyKey)
+    }
+
+    /// Turn recording on or off. What is already stored survives the
+    /// switch — see `historyOn`.
+    func setHistoryOn(_ on: Bool) {
+        historyOn = on
+        UserDefaults.standard.set(!on, forKey: Self.historyDisabledKey)
+    }
+
+    func moveHistorySelection(_ delta: Int) {
+        guard !history.isEmpty else { return }
+        historySelection = min(max(historySelection + delta, 0), history.count - 1)
+    }
+
+    /// Forget one past prompt — the way to drop a single prompt whose
+    /// typed values shouldn't be sitting on disk.
+    func deleteHistory(at index: Int) {
+        history.remove(at: index)
+        saveHistory()
+        historySelection = min(historySelection, max(history.count - 1, 0))
+    }
+
+    func clearHistory() {
+        history.clear()
+        saveHistory()
+        historySelection = 0
+    }
+
+    /// Load a past prompt into the composition and show it. Undoable:
+    /// ⌘Z brings back whatever was in progress.
+    func recall(_ index: Int) {
+        guard history.prompts.indices.contains(index) else { return }
+        composition.load(history.prompts[index], checkpoint: true)
+        negateNext = false
+        setScreen(.composer)
+    }
+
+    /// Recall and copy in one step — "that prompt again", which is
+    /// most of what history is for.
+    func recallAndFinish(_ index: Int) -> Bool {
+        guard history.prompts.indices.contains(index) else { return false }
+        recall(index)
+        return finish()
+    }
+
+    /// Walk through past prompts in the composer: `delta` +1 older, -1
+    /// newer. Only the first step checkpoints (see `Composition.load`),
+    /// and stepping back past the newest prompt spends that checkpoint
+    /// to restore the prompt that was in progress.
+    func stepHistory(_ delta: Int) {
+        guard !history.isEmpty else { return }
+        guard let index = historyIndex else {
+            guard delta > 0 else { return }
+            composition.load(history.prompts[0], checkpoint: true)
+            historyIndex = 0
+            return
+        }
+        let next = index + delta
+        if next < 0 {
+            composition.undo()
+            historyIndex = nil
+        } else if next < history.count {
+            composition.load(history.prompts[next], checkpoint: false)
+            historyIndex = next
+        }
+    }
+
+    /// End a history walk: any edit, or a change of screen, makes the
+    /// next ⌥↑ start over from the newest prompt.
+    private func leaveHistory() { historyIndex = nil }
+
     // MARK: - Screens
 
     func toggleEditor() {
@@ -194,9 +310,17 @@ final class Session: ObservableObject {
         setScreen(screen == .settings ? .composer : .settings)
     }
 
+    /// Opening always starts at the newest prompt: the selection is
+    /// where you are looking, not a setting worth remembering.
+    func toggleHistory() {
+        if screen != .history { historySelection = 0 }
+        setScreen(screen == .history ? .composer : .history)
+    }
+
     /// Switching screens also drops any half-typed placeholder or entry
     /// edit, so no hidden field keeps the focus.
     private func setScreen(_ new: Screen) {
+        leaveHistory()
         screen = new
         draft = nil
         pending = nil
@@ -287,13 +411,17 @@ final class Session: ObservableObject {
         }
     }
 
-    /// Copy the composed prompt to the clipboard and start over.
-    /// Returns false (and does nothing) when the prompt is empty.
+    /// Copy the composed prompt to the clipboard, record it in history,
+    /// and start over. Returns false (and does nothing) when the prompt
+    /// is empty. Copying is the one moment a prompt is worth keeping —
+    /// recording on close would fill history with abandoned drafts.
     func finish() -> Bool {
         guard !isEmpty else { return false }
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(composition.composed, forType: .string)
+        recordHistory(composition.entries)
+        leaveHistory()
         composition = Composition()
         negateNext = false
         pending = nil

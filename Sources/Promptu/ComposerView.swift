@@ -41,7 +41,9 @@ struct ComposerView: View {
                 pageRow
                 BlockEditorView(session: session, theme: theme, fieldFocused: $fieldFocused)
             } else if session.screen == .settings {
-                SettingsView(theme: theme, updateChecker: updateChecker)
+                SettingsView(theme: theme, session: session, updateChecker: updateChecker)
+            } else if session.screen == .history {
+                HistoryView(session: session, theme: theme)
             } else if let error = session.loadError {
                 preview
                 Text(error).foregroundStyle(theme.error).font(.caption)
@@ -371,6 +373,57 @@ struct ComposerView: View {
         return .handled
     }
 
+    /// Keys on the history screen. ⏎ loads the selection into the
+    /// composer, where ⏎ copies it as always; ⌘⏎ does both at once.
+    private func handleHistoryKey(_ press: KeyPress, command: Bool) -> KeyPress.Result {
+        if press.key == .escape || (command && press.key.character.lowercased() == "y") {
+            session.toggleHistory()
+            return .handled
+        }
+        if command && press.key.character == "b" {
+            session.toggleEditor()
+            return .handled
+        }
+        if command && press.key.character == "," {
+            session.toggleSettings()
+            return .handled
+        }
+        // ⌃P/⌃N move the selection, as they move the point on the
+        // composer: the same Emacs pair for "up and down a list".
+        if press.modifiers.contains(.control) {
+            switch press.key.character {
+            case "p":
+                session.moveHistorySelection(-1)
+                return .handled
+            case "n":
+                session.moveHistorySelection(1)
+                return .handled
+            default:
+                return .ignored
+            }
+        }
+        switch press.key {
+        case .upArrow:
+            session.moveHistorySelection(-1)
+            return .handled
+        case .downArrow:
+            session.moveHistorySelection(1)
+            return .handled
+        case .return:
+            if command {
+                if session.recallAndFinish(session.historySelection) { close() }
+            } else {
+                session.recall(session.historySelection)
+            }
+            return .handled
+        case .delete, KeyEquivalent("\u{7F}"):
+            session.deleteHistory(at: session.historySelection)
+            return .handled
+        default:
+            return .ignored
+        }
+    }
+
     /// The deferred lone-ESC action; non-nil while the meta-prefix
     /// grace window is open.
     private func armPendingEscape(_ action: @escaping () -> Void) {
@@ -463,6 +516,25 @@ struct ComposerView: View {
                     hintButton("esc", "back") { session.toggleSettings() }
                     Spacer()
                 }
+            } else if session.screen == .history {
+                let stocked = !session.history.isEmpty
+                HStack {
+                    hintButton("esc", "back") { session.toggleHistory() }
+                    Spacer()
+                    hintDivider
+                    Spacer()
+                    hintButton("⏎", "load", enabled: stocked) {
+                        session.recall(session.historySelection)
+                    }
+                    Spacer()
+                    hintButton("⌘⏎", "copy", enabled: stocked) {
+                        if session.recallAndFinish(session.historySelection) { close() }
+                    }
+                    Spacer()
+                    hintButton("⌫", "forget", enabled: stocked) {
+                        session.deleteHistory(at: session.historySelection)
+                    }
+                }
             } else if session.negateNext {
                 HStack {
                     Button {
@@ -501,6 +573,18 @@ struct ComposerView: View {
                     pointHint
                 }
             }
+            // The two whole-prompt actions get their own row: sharing
+            // one with the four screen buttons ran them past the
+            // panel's width.
+            if session.screen == .composer {
+                HStack {
+                    hintButton("⌘Z", "undo", enabled: session.canUndo) { session.undo() }
+                    Spacer()
+                    hintButton("⏎", "copy", enabled: !session.isEmpty) {
+                        if session.finish() { close() }
+                    }
+                }
+            }
             HStack {
                 footerButton("⌘,", session.screen == .settings ? "compose" : "settings") {
                     session.toggleSettings()
@@ -508,15 +592,12 @@ struct ComposerView: View {
                 footerButton("⌘B", session.screen == .editor ? "compose" : "blocks") {
                     session.toggleEditor()
                 }
+                footerButton("⌘Y", session.screen == .history ? "compose" : "history") {
+                    session.toggleHistory()
+                }
                 footerButton("⌘Q", "quit") { NSApp.terminate(nil) }
                     .keyboardShortcut("q", modifiers: .command)
                 Spacer()
-                if session.screen == .composer {
-                    hintButton("⌘Z", "undo", enabled: session.canUndo) { session.undo() }
-                    hintButton("⏎", "copy", enabled: !session.isEmpty) {
-                        if session.finish() { close() }
-                    }
-                }
             }
         }
     }
@@ -558,6 +639,10 @@ struct ComposerView: View {
                 session.toggleSettings()
                 return .handled
             }
+            if command && press.key.character == "y" {
+                session.toggleHistory()
+                return .handled
+            }
             if press.key == .leftArrow || press.key == .rightArrow {
                 session.cyclePage(press.key == .leftArrow ? -1 : 1)
                 return .handled
@@ -572,7 +657,13 @@ struct ComposerView: View {
                 session.toggleEditor()
                 return .handled
             }
+            if command && press.key.character == "y" {
+                session.toggleHistory()
+                return .handled
+            }
             return .ignored
+        case .history:
+            return handleHistoryKey(press, command: command)
         case .composer:
             break
         }
@@ -592,6 +683,24 @@ struct ComposerView: View {
                 return .handled
             case "z":
                 press.modifiers.contains(.shift) ? session.redo() : session.undo()
+                return .handled
+            case "y":
+                session.toggleHistory()
+                return .handled
+            default:
+                return .ignored
+            }
+        }
+
+        // ⌥↑/⌥↓ walk history in place — Emacs promptu's M-p/M-n. Plain
+        // ⌥ presses are free here: block keys reject every modifier.
+        if press.modifiers == [.option] {
+            switch press.key {
+            case .upArrow:
+                session.stepHistory(1)
+                return .handled
+            case .downArrow:
+                session.stepHistory(-1)
                 return .handled
             default:
                 return .ignored

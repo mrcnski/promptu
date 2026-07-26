@@ -72,6 +72,7 @@ Key files:
 | `Promptu/Theme.swift` | Catppuccin Latte (light) / Nimbus (dark) palettes |
 | `Promptu/Motion.swift` | the one gate for every animation (`Motion.gated`) |
 | `PromptuCore/Composition.swift` | entries, point, undo/redo — the model under `Session` |
+| `PromptuCore/History.swift` | the past-prompts ring (dedup, cap); storage is `Session`'s job |
 
 ### Popover and hotkey gotchas
 
@@ -96,6 +97,10 @@ These are load-bearing and easy to reintroduce:
   builds a never-shown main menu; an accessory app starts with none.
 - `toggle()` treats a shown-but-invisible popover as closed, to recover from a
   wedge seen in the wild.
+- The same height rule shapes two rows that look over-engineered: the settings
+  version row (its always-present "check now" pins the height while the status
+  text swaps) and the history list (fixed height, single-line rows, so selecting
+  or deleting can't resize the panel).
 
 ### Config files
 
@@ -119,10 +124,15 @@ Seeding rules differ on purpose: `blocks.json` is seeded whenever it is missing
 page keeps it deleted. An existing file is never overwritten; a malformed one
 throws instead of being clobbered.
 
+Prompt history is *not* a file: it lives in UserDefaults (`promptHistory`, a
+plain `[[String]]`, so it needs no encoder). It must stay out of
+`~/.config/promptu/` — every `*.json` there is a block page, so a `history.json`
+would show up as one.
+
 UserDefaults keys in use: `hotKeyCode` / `hotKeyModifiers` / `hotKeyDisplay`,
 `theme`, `disableAnimations`, `pageIndex`, `presetsSeeded`, `loginItemApplied`,
-`updateCheckDisabled`, `updateLastCheck`, `updateLatestVersion`,
-`updateLatestURL`, `updateDismissedVersion`. Bundle id is
+`promptHistory`, `historyDisabled`, `updateCheckDisabled`, `updateLastCheck`,
+`updateLatestVersion`, `updateLatestURL`, `updateDismissedVersion`. Bundle id is
 `ski.mrcn.promptu-app`; `defaults read ski.mrcn.promptu-app` is the quickest way
 to see live state.
 
