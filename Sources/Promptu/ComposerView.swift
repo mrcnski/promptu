@@ -374,18 +374,11 @@ struct ComposerView: View {
     }
 
     /// Keys on the history screen. ⏎ loads the selection into the
-    /// composer, where ⏎ copies it as always; ⌘⏎ does both at once.
-    private func handleHistoryKey(_ press: KeyPress, command: Bool) -> KeyPress.Result {
-        if press.key == .escape || (command && press.key.character.lowercased() == "y") {
+    /// composer, where ⏎ copies it as always; ⌘⏎ copies it outright,
+    /// leaving the prompt in progress where it is.
+    private func handleHistoryKey(_ press: KeyPress) -> KeyPress.Result {
+        if press.key == .escape {
             session.toggleHistory()
-            return .handled
-        }
-        if command && press.key.character == "b" {
-            session.toggleEditor()
-            return .handled
-        }
-        if command && press.key.character == "," {
-            session.toggleSettings()
             return .handled
         }
         // ⌃P/⌃N move the selection, as they move the point on the
@@ -410,7 +403,7 @@ struct ComposerView: View {
             session.moveHistorySelection(1)
             return .handled
         case .return:
-            if command {
+            if press.modifiers.contains(.command) {
                 if session.copyHistory(session.historySelection) { close() }
             } else {
                 session.recall(session.historySelection)
@@ -627,20 +620,35 @@ struct ComposerView: View {
         guard !fieldShown else { return handleFieldKey(press) }
         let command = press.modifiers.contains(.command)
 
-        // On the editor and settings screens only "back" keys act; block
-        // keys must not add entries behind them.
-        switch session.screen {
-        case .editor:
-            if press.key == .escape || (command && press.key.character == "b") {
+        // The screen switches work from every screen, so they are
+        // handled once, ahead of the per-screen keys. Repeating them
+        // per screen is what left ⌘Y live on some screens and dead on
+        // others.
+        //
+        // Case-folded throughout: shift capitalizes the character
+        // (⇧⌘E, ⇧⌘Z).
+        if command {
+            switch press.key.character.lowercased() {
+            case "b":
                 session.toggleEditor()
                 return .handled
-            }
-            if command && press.key.character == "," {
+            case ",":
                 session.toggleSettings()
                 return .handled
-            }
-            if command && press.key.character == "y" {
+            case "y":
                 session.toggleHistory()
+                return .handled
+            default:
+                break
+            }
+        }
+
+        // Off the composer only that screen's own keys act; block keys
+        // must not add entries behind it.
+        switch session.screen {
+        case .editor:
+            if press.key == .escape {
+                session.toggleEditor()
                 return .handled
             }
             if press.key == .leftArrow || press.key == .rightArrow {
@@ -649,43 +657,25 @@ struct ComposerView: View {
             }
             return .ignored
         case .settings:
-            if press.key == .escape || (command && press.key.character == ",") {
+            if press.key == .escape {
                 session.toggleSettings()
-                return .handled
-            }
-            if command && press.key.character == "b" {
-                session.toggleEditor()
-                return .handled
-            }
-            if command && press.key.character == "y" {
-                session.toggleHistory()
                 return .handled
             }
             return .ignored
         case .history:
-            return handleHistoryKey(press, command: command)
+            return handleHistoryKey(press)
         case .composer:
             break
         }
 
         if command {
-            // Case-folded: shift capitalizes the character (⇧⌘E, ⇧⌘Z).
             switch press.key.character.lowercased() {
-            case "b":
-                session.toggleEditor()
-                return .handled
-            case ",":
-                session.toggleSettings()
-                return .handled
             case "e":
                 press.modifiers.contains(.shift)
                     ? session.beginEditAll() : session.beginEdit()
                 return .handled
             case "z":
                 press.modifiers.contains(.shift) ? session.redo() : session.undo()
-                return .handled
-            case "y":
-                session.toggleHistory()
                 return .handled
             default:
                 return .ignored
