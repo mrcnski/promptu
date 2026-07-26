@@ -428,6 +428,16 @@ struct ComposerView: View {
         .allowsHitTesting(available)
     }
 
+    /// A hint that is always available, unlike hintButton. Both use the
+    /// footer's tighter padding: every row's first item has to sit on
+    /// the same left edge, and the padding is what sets it.
+    private func footerButton(
+        _ key: String, _ label: String, action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) { hint(key, label) }
+            .buttonStyle(HoverButtonStyle(theme: theme, horizontalPadding: 3))
+    }
+
     /// A short vertical rule separating the footer's hint clusters.
     private var hintDivider: some View {
         Divider().frame(height: 12).overlay(theme.dimmed.opacity(0.3))
@@ -443,11 +453,9 @@ struct ComposerView: View {
                         Text("click a block to edit it · drag to reorder")
                             .font(.caption).foregroundStyle(theme.dimmed)
                     } else {
-                        Button { session.submitDraft() } label: { hint("⏎", "save") }
-                            .buttonStyle(HoverButtonStyle(theme: theme))
+                        footerButton("⏎", "save") { session.submitDraft() }
                         Spacer()
-                        Button { session.cancelDraft() } label: { hint("esc", "cancel") }
-                            .buttonStyle(HoverButtonStyle(theme: theme))
+                        footerButton("esc", "cancel") { session.cancelDraft() }
                     }
                 }
             } else if session.screen == .settings {
@@ -467,7 +475,7 @@ struct ComposerView: View {
                             .padding(.vertical, 2)
                             .background(theme.placeholder.opacity(0.15), in: Capsule())
                     }
-                    .buttonStyle(HoverButtonStyle(theme: theme))
+                    .buttonStyle(HoverButtonStyle(theme: theme, horizontalPadding: 3))
                     Spacer()
                 }
             } else {
@@ -494,16 +502,13 @@ struct ComposerView: View {
                 }
             }
             HStack {
-                Button { session.toggleSettings() } label: {
-                    hint("⌘,", session.screen == .settings ? "compose" : "settings")
+                footerButton("⌘,", session.screen == .settings ? "compose" : "settings") {
+                    session.toggleSettings()
                 }
-                .buttonStyle(HoverButtonStyle(theme: theme))
-                Button { session.toggleEditor() } label: {
-                    hint("⌘B", session.screen == .editor ? "compose" : "blocks")
+                footerButton("⌘B", session.screen == .editor ? "compose" : "blocks") {
+                    session.toggleEditor()
                 }
-                .buttonStyle(HoverButtonStyle(theme: theme))
-                Button { NSApp.terminate(nil) } label: { hint("⌘Q", "quit") }
-                    .buttonStyle(HoverButtonStyle(theme: theme))
+                footerButton("⌘Q", "quit") { NSApp.terminate(nil) }
                     .keyboardShortcut("q", modifiers: .command)
                 Spacer()
                 if session.screen == .composer {
