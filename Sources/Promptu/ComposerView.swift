@@ -451,8 +451,13 @@ struct ComposerView: View {
         }
     }
 
+    /// Not monospaced, though a key elsewhere is: the footer's keys are
+    /// mostly symbols (⌘ ⌫ ⏎ ⇧ ↑), and SF Mono draws those noticeably
+    /// larger than the label beside them at the same size, which read as
+    /// the rows using different font sizes. Weight and color still set
+    /// the key apart from its label.
     private func hintKey(_ key: String) -> some View {
-        Text(key).font(.caption.monospaced().bold())
+        Text(key).font(.caption.bold())
             .foregroundStyle(theme.foreground.opacity(0.8))
     }
 
