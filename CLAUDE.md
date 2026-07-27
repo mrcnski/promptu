@@ -66,7 +66,8 @@ Key files:
 | file | holds |
 | --- | --- |
 | `Promptu/AppDelegate.swift` | status item, popover lifecycle, hotkey (re)registration, menubar update dot |
-| `Promptu/ComposerView.swift` | the main screen: block grid, live preview, key handling, footer hints (largest file) |
+| `Promptu/ComposerView.swift` | the main screen: block grid, key handling, footer hints (largest file) |
+| `Promptu/PromptPreview.swift` | a prompt as entry rows — the composer's live preview, and the history screen's read-only readout of the same |
 | `Promptu/Session.swift` | all UI state; wraps `Composition`, owns the block **pages** and writes them back to disk |
 | `Promptu/HotKey.swift` | Carbon `RegisterEventHotKey` wrapper + the persisted `HotKeySpec` |
 | `Promptu/Theme.swift` | Catppuccin Latte (light) / Nimbus (dark) palettes |
@@ -97,6 +98,12 @@ These are load-bearing and easy to reintroduce:
   builds a never-shown main menu; an accessory app starts with none.
 - `toggle()` treats a shown-but-invisible popover as closed, to recover from a
   wedge seen in the wild.
+- The panel's scroll views hide their indicators (the gutter appearing mid-scroll
+  narrows the rows and jerks their trailing edge sideways) and mark clipped
+  content with `ScrollFades` instead. It takes **both** halves —
+  `.scrollEdgeContent($edges)` on the content and `.scrollEdgeFades(theme, $edges)`
+  on the scroll view. With only the second, nothing measures the content and the
+  fades silently never appear.
 - The same height rule shapes two rows that look over-engineered: the settings
   version row (its always-present "check now" pins the height while the status
   text swaps) and the history list (fixed height, single-line rows, so selecting

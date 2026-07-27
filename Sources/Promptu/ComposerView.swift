@@ -13,19 +13,9 @@ struct ComposerView: View {
     @Environment(\.colorScheme) private var colorScheme
     @AppStorage(ThemeChoice.defaultsKey) private var themeChoice = ThemeChoice.system
 
-    @State private var drag = ReorderDrag()
-
     /// Non-nil while an ESC waits out its meta-prefix grace window;
     /// runs the deferred lone-ESC action when it fires.
     @State private var pendingEscape: DispatchWorkItem?
-
-    /// Where the preview's content sits relative to its viewport,
-    /// driving the edge fades that mark clipped content.
-    @State private var previewContent: CGRect = .zero
-    @State private var previewViewport: CGFloat = 0
-
-    private nonisolated static let previewSpace = "preview"
-    private nonisolated static let viewportSpace = "previewViewport"
 
     private var theme: Theme { themeChoice.theme(for: colorScheme) }
     private var fieldShown: Bool {
@@ -81,149 +71,13 @@ struct ComposerView: View {
         }
     }
 
-    /// One preview row per entry, with an identity that stays with the
-    /// entry across reorders so a drop settles under one animation.
-    /// Duplicate entries are told apart by their occurrence number.
-    private struct PreviewRow: Identifiable {
-        let id: AnyHashable
-        let index: Int
-        let text: String
-    }
-
-    private var entryRows: [PreviewRow] {
-        var seen: [String: Int] = [:]
-        return session.entries.enumerated().map { index, text in
-            let n = seen[text, default: 0]
-            seen[text] = n + 1
-            return PreviewRow(id: AnyHashable("\(n)|\(text)"), index: index, text: text)
-        }
-    }
-
-    private var entryIDs: [AnyHashable] { entryRows.map(\.id) }
-
-    /// See BlockEditorView.dragTarget — the same drag geometry, over
-    /// the preview's entry rows.
-    private var entryDragTarget: Int? { drag.target(in: entryIDs) }
-
-    /// The preview as one row per entry (plus the point marker's row),
-    /// reorderable by the same hand-rolled DragGesture as the block
-    /// editor: grab a row's grip and the others slide to open a gap.
+    /// The live prompt, reorderable by dragging a row's grip. The
+    /// history screen shows the same view, read-only, so a recalled
+    /// prompt looks the same before and after.
     private var preview: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    if session.isEmpty {
-                        Text("empty prompt")
-                            .font(.system(.body, design: .monospaced))
-                            .foregroundStyle(theme.dimmed)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    } else {
-                        if session.pointGap == 0 { marker }
-                        ForEach(entryRows) { row in
-                            entryRow(row)
-                            if session.pointGap == row.index + 1 { marker }
-                        }
-                    }
-                }
-                .coordinateSpace(name: Self.previewSpace)
-                .animation(Motion.gated(ReorderDrag.settle), value: entryDragTarget)
-                .onPreferenceChange(ReorderFrameKey.self) { drag.measure($0) }
-                .onGeometryChange(for: CGRect.self) {
-                    $0.frame(in: .named(Self.viewportSpace))
-                } action: { previewContent = $0 }
-            }
-            .coordinateSpace(name: Self.viewportSpace)
-            // No scroll indicator: its gutter appearing as the preview
-            // crosses the height cap would narrow the rows and jerk the
-            // trailing grips sideways. Edge fades mark clipped content
-            // instead.
-            .scrollIndicators(.never)
-            .frame(minHeight: 40, maxHeight: 300)
-            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
-                previewViewport = $0
-            }
-            .overlay(alignment: .top) { edgeFade(.top) }
-            .overlay(alignment: .bottom) { edgeFade(.bottom) }
-            .onChange(of: session.preview) {
-                // Follow the point: its marker when moved, the tail
-                // otherwise. The nil anchor scrolls the minimum needed.
-                // A frame later, because the popover window grows a
-                // frame behind the content: scrolling against the
-                // still-small viewport shifts every row up, and the
-                // resize snaps them back — a visible bounce.
-                let target: AnyHashable? =
-                    session.pointGap != nil ? Self.markerID : entryRows.last?.id
-                guard let target else { return }
-                DispatchQueue.main.async { proxy.scrollTo(target, anchor: nil) }
-            }
-        }
-        .padding(8)
-        .background(theme.surface, in: RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(theme.dimmed.opacity(0.15)))
-        // A screen switch mid-drag (⌘B under a held mouse) cancels the
-        // gesture without its onEnded; don't keep a stuck drag around —
-        // the marker would stay hidden and the frames frozen.
-        .onDisappear { drag = ReorderDrag() }
-    }
-
-    /// A short gradient into the surface color at a clipped edge — the
-    /// scrollability hint standing in for the hidden scroll indicator.
-    private func edgeFade(_ edge: VerticalEdge) -> some View {
-        let clipped =
-            edge == .top
-            ? previewContent.minY < -1
-            : previewContent.maxY > previewViewport + 1
-        return LinearGradient(
-            colors: [theme.surface, theme.surface.opacity(0)],
-            startPoint: edge == .top ? .top : .bottom,
-            endPoint: edge == .top ? .bottom : .top
-        )
-        .frame(height: 14)
-        .allowsHitTesting(false)
-        .opacity(clipped ? 1 : 0)
-        .animation(Motion.gated(.easeInOut(duration: 0.15)), value: clipped)
-    }
-
-    private static let markerID: AnyHashable = "marker"
-
-    /// The point marker, on its own line (the separator is multi-line).
-    /// Hidden — but keeping its slot — while a drag is in flight, since
-    /// the sliding entry rows don't reflow around it.
-    private var marker: some View {
-        Text("▮")
-            .font(.system(.body, design: .monospaced))
-            .foregroundStyle(theme.key)
-            .opacity(drag.active ? 0 : 1)
-            .id(Self.markerID)
-    }
-
-    /// An entry's line(s), bulleted like the composed prompt, with a
-    /// full-height reorder grip overlaid on the trailing edge, its
-    /// icon centered on the row.
-    private func entryRow(_ row: PreviewRow) -> some View {
-        HStack(spacing: 0) {
-            Text(Compose.linePrefix() + row.text)
-                .font(.system(.body, design: .monospaced))
-                .foregroundStyle(theme.foreground)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Grip(theme: theme).hidden()
-        }
-        .overlay(alignment: .trailing) {
-            Grip(theme: theme)
-                .gesture(
-                    reorderGesture(
-                        $drag, id: row.id, space: Self.previewSpace, order: entryIDs,
-                        move: session.moveEntry))
-        }
-        // The dragged row rides above the rest on an opaque background,
-        // so it reads as lifted while it floats over them.
-        .background(
-            drag.draggingID == row.id ? theme.hover : .clear,
-            in: RoundedRectangle(cornerRadius: 4))
-        .reorderFrame(row.id, in: Self.previewSpace)
-        .offset(y: drag.offset(of: row.id, in: entryIDs, spacing: 0))
-        .zIndex(drag.draggingID == row.id ? 1 : 0)
+        PromptPreview(
+            entries: session.entries, theme: theme, pointGap: session.pointGap,
+            move: session.moveEntry)
     }
 
     /// The active page's name between ◀ ▶ cycling buttons, over the
