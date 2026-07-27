@@ -44,6 +44,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         UserDefaults.standard.set(100_000, forKey: "NSTextInsertionPointBlinkPeriodOn")
         UserDefaults.standard.set(0, forKey: "NSTextInsertionPointBlinkPeriodOff")
 
+        // Tooltips on hover rather than after the system's multi-second
+        // dwell. A tooltip here explains a control the user is already
+        // pointing at; waiting that long reads as nothing happening.
+        // Their fade-out is drawn by the system and can't be tuned.
+        UserDefaults.standard.set(150, forKey: "NSInitialToolTipDelay")
+
         installEditMenu()
         registerLoginItemOnce()
 
