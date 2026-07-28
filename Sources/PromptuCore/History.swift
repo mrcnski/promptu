@@ -38,13 +38,19 @@ public struct History: Equatable, Sendable {
 
     public mutating func clear() { prompts.removeAll() }
 
+    /// One entry flattened to a single line: any newline inside a
+    /// free-text entry becomes a space. Exposed apart from `summary`
+    /// because the history rows color entries and separators
+    /// differently, so they need the pieces, not the joined line.
+    public static func flatten(_ entry: String) -> String {
+        entry.split(whereSeparator: \.isNewline).joined(separator: " ")
+    }
+
     /// One line standing for a whole prompt, for a list row: the
     /// entries run together, and any newline inside a free-text entry
     /// is flattened. Single-line matters — a row that wrapped would
     /// resize the panel as the selection moved over it.
     public static func summary(_ entries: [String]) -> String {
-        entries.joined(separator: " · ")
-            .split(whereSeparator: \.isNewline)
-            .joined(separator: " ")
+        entries.map(flatten).joined(separator: " · ")
     }
 }

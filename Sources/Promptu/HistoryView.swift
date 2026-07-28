@@ -59,8 +59,7 @@ struct HistoryView: View {
                     ForEach(Array(session.history.prompts.enumerated()), id: \.offset) {
                         index, entries in
                         HistoryRow(
-                            session: session, theme: theme, index: index,
-                            summary: History.summary(entries)
+                            session: session, theme: theme, index: index, entries: entries
                         )
                         .id(index)
                     }
@@ -80,29 +79,54 @@ struct HistoryView: View {
 }
 
 /// One past prompt. Clicking loads it, the same as ⏎ on the selection.
+///
+/// The row is the prompt's entries dotted together, the separators in
+/// the key color so a row's block structure shows at a glance. The
+/// selection carries the composer's point marker rather than only a
+/// brighter gray — ⏎ makes it the composition the point sits in, and
+/// the marker says so in the composer's own language.
 private struct HistoryRow: View {
     @ObservedObject var session: Session
     let theme: Theme
     let index: Int
-    let summary: String
+    let entries: [String]
     @State private var hovering = false
 
     private var selected: Bool { index == session.historySelection }
 
     var body: some View {
-        Text(summary)
-            .font(.system(.body, design: .monospaced))
-            .lineLimit(1)
-            .truncationMode(.tail)
-            .foregroundStyle(selected ? theme.foreground : theme.dimmed)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .background(
-                selected || hovering ? theme.hover : .clear,
-                in: RoundedRectangle(cornerRadius: 4))
-            .contentShape(Rectangle())
-            .onHover { hovering = $0 }
-            .onTapGesture { session.recall(index) }
+        HStack(spacing: 6) {
+            // Present on every row but shown on the selection, so the
+            // rows' text stays aligned as the selection moves.
+            Text("▮")
+                .foregroundStyle(theme.key)
+                .opacity(selected ? 1 : 0)
+            summary
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .foregroundStyle(selected ? theme.foreground : theme.dimmed)
+        }
+        .font(.system(.body, design: .monospaced))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .background(
+            selected || hovering ? theme.hover : .clear,
+            in: RoundedRectangle(cornerRadius: 4))
+        .contentShape(Rectangle())
+        .onHover { hovering = $0 }
+        .onTapGesture { session.recall(index) }
+    }
+
+    /// The entries dotted together. The separators carry their own
+    /// color inside the concatenation; the entries inherit the row's.
+    private var summary: Text {
+        entries.enumerated().reduce(Text(verbatim: "")) { result, item in
+            let entry = Text(History.flatten(item.element))
+            guard item.offset > 0 else { return result + entry }
+            let separator = Text(" · ")
+                .foregroundStyle(theme.key.opacity(selected ? 1 : 0.55))
+            return result + separator + entry
+        }
     }
 }

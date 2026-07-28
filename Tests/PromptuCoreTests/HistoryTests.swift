@@ -77,3 +77,10 @@ import Testing
 @Test func summaryFlattensNewlines() {
     #expect(History.summary(["one\ntwo", "three"]) == "one two · three")
 }
+
+/// The rows color entries and separators separately, so they flatten
+/// each entry on its own — it must do to one entry what summary does
+/// to the whole prompt.
+@Test func flattenCollapsesNewlinesInOneEntry() {
+    #expect(History.flatten("one\ntwo") == "one two")
+}
