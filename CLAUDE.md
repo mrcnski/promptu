@@ -15,7 +15,7 @@ Requires macOS 14+ and a Swift 6 toolchain.
 ## Building and verifying
 
 ```sh
-make test      # swift test — the PromptuCore suite (68 tests)
+make test      # swift test — the PromptuCore suite
 make run       # swift run, straight from the checkout
 make app       # build dist/Promptu.app (ad-hoc signed), regenerating the icon
 make install   # copy dist/Promptu.app to /Applications
@@ -94,6 +94,19 @@ These are load-bearing and easy to reintroduce:
   to an accessory app, leaving the previous app frontmost under the popover.
   Despite the deprecation notice, the forced call is the one that works
   (verified on macOS 15.7).
+- That forced activation is also why `.transient` alone can't close the panel
+  when another menubar app opens: a status-bar click deactivates nobody, and
+  other menubar apps fold there only because they were never active — losing
+  key focus is enough. The global mouse-down monitor installed while the panel
+  shows is what closes it. It sees exactly the clicks that belong to other
+  processes and never Promptu's own, so clicking the popover or the status
+  button doesn't fight it — the monitor is not redundant with `.transient`.
+- A pinned theme colors only the content; the popover *frame* — the arrow —
+  is drawn from the window's appearance, which otherwise follows the system
+  (Nimbus pinned on a light system wore a light arrow on a dark panel).
+  `applyThemeAppearance` mirrors the setting onto `popover.appearance`,
+  re-applied on every `UserDefaults` write because the setting has no
+  notification channel of its own.
 - Editing shortcuts (⌘C/⌘V/⌘A/undo) only work because `installEditMenu()`
   builds a never-shown main menu; an accessory app starts with none.
 - `toggle()` treats a shown-but-invisible popover as closed, to recover from a
@@ -112,10 +125,16 @@ These are load-bearing and easy to reintroduce:
   content and `.scrollBar(theme, $bar, proxy, height:)` on the scroll view.
   With only the second, nothing measures the content and the bar silently
   never appears.
-- The same height rule shapes two rows that look over-engineered: the settings
+- The same height rule shapes parts that look over-engineered: the settings
   version row (its always-present "check now" pins the height while the status
-  text swaps) and the history list (fixed height, single-line rows, so selecting
-  or deleting can't resize the panel).
+  text swaps), and the history and block editor lists (fixed-height boxes,
+  single-line history rows — so moving a selection, forgetting a prompt, or
+  cycling pages can't resize the panel).
+- The two keyboard-selectable lists (history, block editor) speak one
+  language: the ▮ marker with its slot reserved on every row, ↑↓/⌃P⌃N to
+  move, ⏎ to act. A new list screen should follow it, and its selection has
+  to be kept honest through every mutation of the list — see
+  `Reorder.follow` for the drag-reorder case.
 
 ### Config files
 
