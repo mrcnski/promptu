@@ -14,7 +14,7 @@ import SwiftUI
 struct HistoryView: View {
     @ObservedObject var session: Session
     let theme: Theme
-    @State private var edges = ScrollEdges()
+    @State private var bar = ScrollBarState()
 
     // The list is the part being driven, so it gets the height; the
     // preview only has to show enough of a prompt to recognize it,
@@ -65,14 +65,10 @@ struct HistoryView: View {
                         .id(index)
                     }
                 }
-                .scrollEdgeContent($edges)
+                .scrollBarContent($bar)
             }
-            .scrollIndicators(.never)
             .frame(height: Self.listHeight, alignment: .top)
-            // The same clipped-edge hint the preview uses: with the
-            // list a fixed height, nothing else says that more prompts
-            // continue past its edge.
-            .scrollEdgeFades(theme, $edges)
+            .scrollBar(theme, $bar, proxy)
             .onChange(of: session.historySelection) { _, index in
                 proxy.scrollTo(index, anchor: nil)
             }

@@ -98,12 +98,16 @@ These are load-bearing and easy to reintroduce:
   builds a never-shown main menu; an accessory app starts with none.
 - `toggle()` treats a shown-but-invisible popover as closed, to recover from a
   wedge seen in the wild.
-- The panel's scroll views hide their indicators (the gutter appearing mid-scroll
-  narrows the rows and jerks their trailing edge sideways) and mark clipped
-  content with `ScrollFades` instead. It takes **both** halves —
-  `.scrollEdgeContent($edges)` on the content and `.scrollEdgeFades(theme, $edges)`
-  on the scroll view. With only the second, nothing measures the content and the
-  fades silently never appear.
+- The panel's scroll views hide the system indicator and draw their own
+  (`ScrollBar.swift`) in a gutter the content reserves permanently: a legacy
+  scroller carves its gutter out of the content only once it overflows, which
+  narrows the rows and jerks their trailing edge sideways, and an overlay
+  scroller shows nothing until mid-scroll. Dragging the thumb scrolls through
+  `proxy.scrollTo` on the whole content with a proportional anchor — the one
+  continuous offset control SwiftUI has on macOS 14. It takes **both** halves
+  plus the reader's proxy — `.scrollBarContent($bar)` on the content and
+  `.scrollBar(theme, $bar, proxy)` on the scroll view. With only the second,
+  nothing measures the content and the bar silently never appears.
 - The same height rule shapes two rows that look over-engineered: the settings
   version row (its always-present "check now" pins the height while the status
   text swaps) and the history list (fixed height, single-line rows, so selecting

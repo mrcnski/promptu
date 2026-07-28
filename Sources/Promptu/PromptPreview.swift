@@ -25,7 +25,7 @@ struct PromptPreview: View {
     var move: ((Int, Int) -> Void)?
 
     @State private var drag = ReorderDrag()
-    @State private var edges = ScrollEdges()
+    @State private var bar = ScrollBarState()
 
     private nonisolated static let previewSpace = "preview"
     private static let markerID: AnyHashable = "marker"
@@ -50,11 +50,10 @@ struct PromptPreview: View {
                 .coordinateSpace(name: Self.previewSpace)
                 .animation(Motion.gated(ReorderDrag.settle), value: dragTarget)
                 .onPreferenceChange(ReorderFrameKey.self) { drag.measure($0) }
-                .scrollEdgeContent($edges)
+                .scrollBarContent($bar)
             }
-            .scrollIndicators(.never)
             .frame(minHeight: minHeight, maxHeight: maxHeight)
-            .scrollEdgeFades(theme, $edges)
+            .scrollBar(theme, $bar, proxy)
             .onChange(of: entries) { follow(proxy) }
             .onChange(of: pointGap) { follow(proxy) }
         }

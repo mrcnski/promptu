@@ -9,6 +9,7 @@ struct BlockEditorView: View {
     @FocusState.Binding var fieldFocused: Bool
 
     @State private var drag = ReorderDrag()
+    @State private var bar = ScrollBarState()
 
     private static let rowSpacing: CGFloat = 3
     private static let space = "blocks"
@@ -34,20 +35,24 @@ struct BlockEditorView: View {
     /// List it sizes to its content, so it renders in the popover.
     private var list: some View {
         VStack(alignment: .leading, spacing: Self.rowSpacing) {
-            ScrollView {
-                VStack(spacing: Self.rowSpacing) {
-                    ForEach(session.blocks) { block in
-                        BlockRow(
-                            session: session, theme: theme, block: block,
-                            content: row(block), spacing: Self.rowSpacing, space: Self.space,
-                            drag: $drag)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: Self.rowSpacing) {
+                        ForEach(session.blocks) { block in
+                            BlockRow(
+                                session: session, theme: theme, block: block,
+                                content: row(block), spacing: Self.rowSpacing, space: Self.space,
+                                drag: $drag)
+                        }
                     }
+                    .coordinateSpace(name: Self.space)
+                    .animation(Motion.gated(ReorderDrag.settle), value: dragTarget)
+                    .onPreferenceChange(ReorderFrameKey.self) { drag.measure($0) }
+                    .scrollBarContent($bar)
                 }
-                .coordinateSpace(name: Self.space)
-                .animation(Motion.gated(ReorderDrag.settle), value: dragTarget)
-                .onPreferenceChange(ReorderFrameKey.self) { drag.measure($0) }
+                .frame(maxHeight: 380)
+                .scrollBar(theme, $bar, proxy)
             }
-            .frame(maxHeight: 380)
             Button {
                 session.beginDraft()
             } label: {
