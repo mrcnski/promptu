@@ -33,6 +33,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     /// app hides — handing focus back — only once it has played,
     /// where hiding immediately would cut it to a blink.
     private var hideWhenClosed = false
+    /// Closes the panel on a click in another app, installed while the
+    /// popover shows. Transient behavior covers most outside clicks,
+    /// but not the status bar: a click there deactivates nobody, so
+    /// opening another menubar app left the panel hanging open under
+    /// it. A global monitor sees exactly the missing clicks — they
+    /// belong to other processes; Promptu's own (the popover, the
+    /// status button) never reach it, so toggling is untouched.
+    private var clickMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // LSUIElement covers bundled runs; this also covers `swift run`.
@@ -162,6 +170,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     /// dispatch, and re-registering there would RemoveEventHandler on
     /// the handler still executing — killing the hotkey after one use.
     func popoverDidClose(_ notification: Notification) {
+        if let clickMonitor {
+            NSEvent.removeMonitor(clickMonitor)
+            self.clickMonitor = nil
+        }
         let hide = hideWhenClosed
         hideWhenClosed = false
         DispatchQueue.main.async { [weak self] in
@@ -190,6 +202,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         NSApp.activate(ignoringOtherApps: true)
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         popover.contentViewController?.view.window?.makeKey()
+        if clickMonitor == nil {
+            clickMonitor = NSEvent.addGlobalMonitorForEvents(
+                matching: [.leftMouseDown, .rightMouseDown]
+            ) { [weak self] _ in
+                // No hide (see close): the click is taking the user
+                // somewhere else, and yanking focus back would fight it.
+                DispatchQueue.main.async {
+                    MainActor.assumeIsolated {
+                        guard let self, self.popover.isShown else { return }
+                        self.popover.performClose(nil)
+                    }
+                }
+            }
+        }
     }
 
     /// Closes the panel and hands focus back to the previous app, so a
