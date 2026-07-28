@@ -88,6 +88,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         hosting.sizingOptions = .preferredContentSize
         popover.contentViewController = hosting
 
+        // A pinned theme must reach the popover's own chrome: the
+        // content colors itself, but the frame — the arrow above the
+        // panel — is drawn from the window's appearance, and left
+        // alone it follows the system. Nimbus on a light system then
+        // wore a light arrow on a dark panel. Re-applied on every
+        // defaults write; the theme setting has no channel of its own.
+        applyThemeAppearance()
+        NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.applyThemeAppearance() }
+        }
+
         registerHotKey()
         NotificationCenter.default.addObserver(
             forName: .hotKeyReload, object: nil, queue: .main
@@ -136,6 +149,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         else { return }
         UserDefaults.standard.set(true, forKey: "loginItemApplied")
         try? SMAppService.mainApp.register()
+    }
+
+    /// Match the popover's appearance to the theme setting: nil for
+    /// "system" (inherit), forced light or dark for a pinned theme.
+    /// Compared by name before assigning — the defaults observer calls
+    /// this on every write, and re-assigning an equal appearance would
+    /// still dirty the shown panel.
+    private func applyThemeAppearance() {
+        let choice =
+            ThemeChoice(
+                rawValue: UserDefaults.standard.string(forKey: ThemeChoice.defaultsKey) ?? ""
+            ) ?? .system
+        let appearance: NSAppearance? =
+            switch choice {
+            case .system: nil
+            case .latte: NSAppearance(named: .aqua)
+            case .nimbus: NSAppearance(named: .darkAqua)
+            }
+        if popover.appearance?.name != appearance?.name {
+            popover.appearance = appearance
+        }
     }
 
     /// (Re)register the global hotkey from its saved setting. The old
