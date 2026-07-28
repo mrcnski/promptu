@@ -21,7 +21,7 @@ struct PromptPreview: View {
     /// arrow keys, and a preview that resized to each prompt would
     /// resize the popover under every keypress.
     var minHeight: CGFloat = 40
-    var maxHeight: CGFloat = 300
+    var maxHeight: CGFloat = 180
     var move: ((Int, Int) -> Void)?
 
     @State private var drag = ReorderDrag()
