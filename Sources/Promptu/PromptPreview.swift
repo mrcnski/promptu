@@ -70,9 +70,14 @@ struct PromptPreview: View {
     /// moved, the tail otherwise, and the top when the whole prompt was
     /// swapped for another. The nil anchor scrolls the minimum needed.
     ///
-    /// A frame later, because the popover window grows a frame behind
-    /// the content: scrolling against the still-small viewport shifts
-    /// every row up, and the resize snaps them back — a visible bounce.
+    /// Below the height cap the scroll waits a frame, because there the
+    /// popover window grows a frame behind the content: scrolling
+    /// against the still-small viewport shifts every row up, and the
+    /// resize snaps them back — a visible bounce. At the cap the window
+    /// isn't resizing and the scroll must land in the same frame as the
+    /// content change instead — deferred, it rendered an intermediate
+    /// frame: the thumb leaping up before snapping to the tail on an
+    /// add, rows shifting under a point move.
     private func follow(_ proxy: ScrollViewProxy) {
         let target: AnyHashable? =
             move == nil
@@ -80,7 +85,11 @@ struct PromptPreview: View {
             : (pointGap != nil ? Self.markerID : rows.last?.id)
         guard let target else { return }
         let anchor: UnitPoint? = move == nil ? .top : nil
-        DispatchQueue.main.async { proxy.scrollTo(target, anchor: anchor) }
+        if bar.height > maxHeight + 1 {
+            proxy.scrollTo(target, anchor: anchor)
+        } else {
+            DispatchQueue.main.async { proxy.scrollTo(target, anchor: anchor) }
+        }
     }
 
     /// One row per entry, with an identity that stays with the entry
