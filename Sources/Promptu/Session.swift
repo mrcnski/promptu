@@ -58,6 +58,8 @@ final class Session: ObservableObject {
     @Published private(set) var historyOn: Bool
     /// Which row the history screen has selected.
     @Published private(set) var historySelection = 0
+    /// Which block the editor's list has selected — the one ⏎ opens.
+    @Published private(set) var editorSelection = 0
     /// How far a ⌥↑/⌥↓ walk through history has gone, nil when not
     /// walking — the next walk then starts over at the newest prompt.
     /// Nothing renders it: the walk shows through the preview.
@@ -118,6 +120,8 @@ final class Session: ObservableObject {
         guard pages.count > 1 else { return }
         pageIndex = (pageIndex + delta + pages.count) % pages.count
         UserDefaults.standard.set(pageIndex, forKey: "pageIndex")
+        // The selection was an index into the page just left behind.
+        editorSelection = 0
     }
 
     var isEmpty: Bool { composition.entries.isEmpty }
@@ -308,7 +312,11 @@ final class Session: ObservableObject {
 
     // MARK: - Screens
 
+    /// Opening always starts at the first block, as history starts at
+    /// the newest prompt: the selection is where you are looking, not
+    /// a setting worth remembering.
     func toggleEditor() {
+        if screen != .editor { editorSelection = 0 }
         setScreen(screen == .editor ? .composer : .editor)
     }
 
@@ -333,7 +341,24 @@ final class Session: ObservableObject {
         editInput = nil
     }
 
+    func moveEditorSelection(_ delta: Int) {
+        guard !blocks.isEmpty else { return }
+        editorSelection = min(max(editorSelection + delta, 0), blocks.count - 1)
+    }
+
+    /// Open the selected block's edit form — ⏎'s path into it; a click
+    /// hands its block to beginDraft directly.
+    func editSelectedBlock() {
+        guard blocks.indices.contains(editorSelection) else { return }
+        beginDraft(blocks[editorSelection])
+    }
+
     func beginDraft(_ block: Block? = nil) {
+        // A click edits a block the keys never chose; adopt it, so
+        // canceling out leaves the selection on the block just visited.
+        if let block, let index = blocks.firstIndex(of: block) {
+            editorSelection = index
+        }
         draft = block.map {
             Draft(
                 originalKey: $0.key, key: $0.key, desc: $0.desc,
@@ -386,6 +411,7 @@ final class Session: ObservableObject {
         updated.insert(updated.remove(at: from), at: to)
         guard updated != blocks else { return }
         pages[pageIndex].blocks = updated
+        editorSelection = Reorder.follow(selection: editorSelection, from: from, to: to)
         do {
             try BlocksConfig.save(updated, to: pages[pageIndex].url)
         } catch {
@@ -410,6 +436,9 @@ final class Session: ObservableObject {
         do {
             try BlocksConfig.save(updated, to: pages[pageIndex].url)
             pages[pageIndex].blocks = updated
+            // Deleting the last block would leave the selection past
+            // the end of the list.
+            editorSelection = min(editorSelection, max(updated.count - 1, 0))
             draft = nil
             return nil
         } catch {

@@ -47,4 +47,18 @@ public enum Reorder {
         let open: CGFloat = positionWithoutDragged >= to ? slot : 0
         return fill + open
     }
+
+    /// Where a selection index lands after the row at `from` moves to
+    /// `to` (`to` its index once the row is out, as in the move
+    /// itself). The selection stays on the row it was on: it rides
+    /// along when its own row is the one dragged, and shifts aside
+    /// when another row is pulled out from one side of it and dropped
+    /// on the other.
+    public static func follow(selection: Int, from: Int, to: Int) -> Int {
+        if selection == from { return to }
+        var landed = selection
+        if from < landed { landed -= 1 }
+        if to <= landed { landed += 1 }
+        return landed
+    }
 }

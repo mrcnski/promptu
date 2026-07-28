@@ -227,6 +227,46 @@ struct ComposerView: View {
         return .handled
     }
 
+    /// Keys on the block editor's list (the form's field has the
+    /// focus while a draft is open, so these never see its presses).
+    /// ↑↓ move the selection and ⏎ opens it for editing; ←/→ cycle
+    /// pages, as on the composer.
+    private func handleEditorKey(_ press: KeyPress) -> KeyPress.Result {
+        if press.key == .escape {
+            session.toggleEditor()
+            return .handled
+        }
+        // ⌃P/⌃N move the selection, as everywhere else in the app.
+        if press.modifiers.contains(.control) {
+            switch press.key.character {
+            case "p":
+                session.moveEditorSelection(-1)
+                return .handled
+            case "n":
+                session.moveEditorSelection(1)
+                return .handled
+            default:
+                return .ignored
+            }
+        }
+        switch press.key {
+        case .upArrow:
+            session.moveEditorSelection(-1)
+            return .handled
+        case .downArrow:
+            session.moveEditorSelection(1)
+            return .handled
+        case .leftArrow, .rightArrow:
+            session.cyclePage(press.key == .leftArrow ? -1 : 1)
+            return .handled
+        case .return:
+            session.editSelectedBlock()
+            return .handled
+        default:
+            return .ignored
+        }
+    }
+
     /// Keys on the history screen. ⏎ loads the selection into the
     /// composer, where ⏎ copies it as always; ⌘⏎ copies it outright,
     /// leaving the prompt in progress where it is.
@@ -355,7 +395,13 @@ struct ComposerView: View {
                     if session.draft == nil {
                         hintButton("esc", "back") { session.toggleEditor() }
                         Spacer()
-                        Text("click a block to edit it · drag to reorder")
+                        hintDivider
+                        Spacer()
+                        hintButton("⏎", "edit", enabled: !session.blocks.isEmpty) {
+                            session.editSelectedBlock()
+                        }
+                        Spacer()
+                        Text("click to edit · drag to reorder")
                             .font(.caption).foregroundStyle(theme.dimmed)
                     } else {
                         footerButton("⏎", "save") { session.submitDraft() }
@@ -506,15 +552,7 @@ struct ComposerView: View {
         // must not add entries behind it.
         switch session.screen {
         case .editor:
-            if press.key == .escape {
-                session.toggleEditor()
-                return .handled
-            }
-            if press.key == .leftArrow || press.key == .rightArrow {
-                session.cyclePage(press.key == .leftArrow ? -1 : 1)
-                return .handled
-            }
-            return .ignored
+            return handleEditorKey(press)
         case .settings:
             if press.key == .escape {
                 session.toggleSettings()

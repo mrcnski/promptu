@@ -45,9 +45,14 @@ struct BlockEditorView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: Self.rowSpacing) {
-                        ForEach(session.blocks) { block in
+                        // Enumerated for the selection, but the rows
+                        // keep the block as their identity: an
+                        // index identity would hop between blocks on
+                        // a reorder and break the drop's settle.
+                        ForEach(Array(session.blocks.enumerated()), id: \.element.id) {
+                            index, block in
                             BlockRow(
-                                session: session, theme: theme, block: block,
+                                session: session, theme: theme, block: block, index: index,
                                 content: row(block), spacing: Self.rowSpacing, space: Self.space,
                                 drag: $drag)
                         }
@@ -59,6 +64,10 @@ struct BlockEditorView: View {
                 }
                 .frame(height: Self.listHeight, alignment: .top)
                 .scrollBar(theme, $bar, proxy, height: Self.listHeight)
+                .onChange(of: session.editorSelection) { _, index in
+                    guard session.blocks.indices.contains(index) else { return }
+                    proxy.scrollTo(session.blocks[index].id, anchor: nil)
+                }
             }
             .padding(8)
             .background(theme.surface, in: RoundedRectangle(cornerRadius: 8))
@@ -147,22 +156,35 @@ struct BlockEditorView: View {
 /// One reorderable row: tap the body to edit, drag the grip to move.
 /// The grip owns the drag so it can never be mistaken for a tap, and so
 /// the body's text stays a plain click target.
+///
+/// The ↑↓ selection carries the same ▮ marker as the history rows —
+/// ⏎ acts on it, and the marker is how a list says so here. Its slot
+/// is reserved on every row so the text stays aligned as it moves.
 private struct BlockRow<Content: View>: View {
     @ObservedObject var session: Session
     let theme: Theme
     let block: Block
+    let index: Int
     let content: Content
     let spacing: CGFloat
     let space: String
     @Binding var drag: ReorderDrag
     @State private var hovering = false
 
+    private var selected: Bool { index == session.editorSelection }
     private var dragging: Bool { drag.draggingID == AnyHashable(block.id) }
     private var order: [AnyHashable] { session.blocks.map { AnyHashable($0.id) } }
 
     var body: some View {
         HStack(spacing: 0) {
-            content.frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 6) {
+                Text("▮")
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundStyle(theme.key)
+                    .opacity(selected ? 1 : 0)
+                content
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
             // Reserves the grip's width; the visible grip is overlaid
             // below so its hit target spans the row's full height.
             Grip(theme: theme).hidden()
@@ -192,6 +214,6 @@ private struct BlockRow<Content: View>: View {
 
     private var background: Color {
         if dragging { return theme.hover }
-        return hovering ? theme.hover : .clear
+        return hovering || selected ? theme.hover : .clear
     }
 }

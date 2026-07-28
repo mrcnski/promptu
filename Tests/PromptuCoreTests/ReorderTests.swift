@@ -82,3 +82,22 @@ private func offsetFor(
         for: id, order: order, frames: frames, dragging: dragging,
         dragOffset: dragOffset, spacing: 0)
 }
+
+// MARK: - follow
+
+@Test func followRidesAlongWithTheSelectedRow() {
+    #expect(Reorder.follow(selection: 1, from: 1, to: 3) == 3)
+}
+
+@Test func followShiftsAsideWhenARowCrossesTheSelection() {
+    // A row pulled from above the selection and dropped below it:
+    // everything above slides up one, the selection with it.
+    #expect(Reorder.follow(selection: 2, from: 0, to: 3) == 1)
+    // And the mirror: pulled from below, dropped above.
+    #expect(Reorder.follow(selection: 2, from: 4, to: 0) == 3)
+}
+
+@Test func followIgnoresAMoveOnOneSideOfTheSelection() {
+    #expect(Reorder.follow(selection: 3, from: 0, to: 1) == 3)
+    #expect(Reorder.follow(selection: 0, from: 2, to: 4) == 0)
+}
