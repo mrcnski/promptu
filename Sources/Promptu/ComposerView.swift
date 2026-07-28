@@ -634,12 +634,21 @@ struct ComposerView: View {
 /// the whole panel per key, and the field's end-editing write-back on
 /// teardown would fight submitEdit's close (the old enter-twice bug).
 /// The vertical axis lets a multi-line text — a whole-prompt blob —
-/// show all its lines; Return still submits, ⌥⏎ inserts a newline.
+/// grow the field; Return still submits, ⌥⏎ inserts a newline.
+///
+/// The field grows only to a cap and scrolls past it, in the panel's
+/// own scroll-bar dress: unbounded, a large prompt grew the panel past
+/// the screen with no way to reach the rest. The chrome sits on the
+/// scroll view, not the field, so the border stays put while the text
+/// scrolls within it.
 private struct EditField: View {
     @ObservedObject var session: Session
     let theme: Theme
     @FocusState.Binding var fieldFocused: Bool
     @State private var text = ""
+    @State private var bar = CGRect.zero
+
+    private static let maxFieldHeight: CGFloat = 180
 
     /// What the open edit acts on — the field itself looks the same
     /// for an entry and for the whole prompt.
@@ -656,15 +665,27 @@ private struct EditField: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            TextField(
-                session.editingAll ? "edit prompt" : "edit entry",
-                text: $text, axis: .vertical
-            )
-            .fieldChrome(theme)
-            .focused($fieldFocused)
-            .onAppear { text = session.editInput ?? "" }
-            .onSubmit { session.submitEdit(text) }
-            .onExitCommand { session.cancelEdit() }
+            ScrollViewReader { proxy in
+                ScrollView {
+                    TextField(
+                        session.editingAll ? "edit prompt" : "edit entry",
+                        text: $text, axis: .vertical
+                    )
+                    .textFieldStyle(.plain)
+                    .foregroundStyle(theme.foreground)
+                    .focused($fieldFocused)
+                    .onAppear { text = session.editInput ?? "" }
+                    .onSubmit { session.submitEdit(text) }
+                    .onExitCommand { session.cancelEdit() }
+                    .scrollBarContent($bar)
+                }
+                .frame(maxHeight: Self.maxFieldHeight)
+                .scrollBar(theme, $bar, proxy, height: Self.maxFieldHeight)
+            }
+            .padding(6)
+            .background(theme.surface, in: RoundedRectangle(cornerRadius: 6))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6).strokeBorder(theme.key.opacity(0.45)))
             Text(caption)
                 .font(.caption).foregroundStyle(theme.dimmed)
         }
