@@ -9,9 +9,10 @@ struct BlockEditorView: View {
     @FocusState.Binding var fieldFocused: Bool
 
     @State private var drag = ReorderDrag()
-    @State private var bar = ScrollBarState()
+    @State private var bar = CGRect.zero
 
     private static let rowSpacing: CGFloat = 3
+    private static let listHeight: CGFloat = 380
     private static let space = "blocks"
 
     var body: some View {
@@ -50,8 +51,8 @@ struct BlockEditorView: View {
                     .onPreferenceChange(ReorderFrameKey.self) { drag.measure($0) }
                     .scrollBarContent($bar)
                 }
-                .frame(maxHeight: 380)
-                .scrollBar(theme, $bar, proxy)
+                .frame(maxHeight: Self.listHeight)
+                .scrollBar(theme, $bar, proxy, height: Self.listHeight)
             }
             Button {
                 session.beginDraft()

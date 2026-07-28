@@ -14,7 +14,7 @@ import SwiftUI
 struct HistoryView: View {
     @ObservedObject var session: Session
     let theme: Theme
-    @State private var bar = ScrollBarState()
+    @State private var bar = CGRect.zero
 
     // The list is the part being driven, so it gets the height; the
     // preview only has to show enough of a prompt to recognize it,
@@ -68,7 +68,7 @@ struct HistoryView: View {
                 .scrollBarContent($bar)
             }
             .frame(height: Self.listHeight, alignment: .top)
-            .scrollBar(theme, $bar, proxy)
+            .scrollBar(theme, $bar, proxy, height: Self.listHeight)
             .onChange(of: session.historySelection) { _, index in
                 proxy.scrollTo(index, anchor: nil)
             }

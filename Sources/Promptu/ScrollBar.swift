@@ -1,15 +1,5 @@
 import SwiftUI
 
-/// Geometry shared between a scroll view and its bar: the content's
-/// frame in scroll space, and the viewport's height. Held by the view
-/// that owns the scroll view, because measuring it takes two observers
-/// in two places: the content reports its frame, the scroll view its
-/// height.
-struct ScrollBarState: Equatable {
-    var content: CGRect = .zero
-    var viewport: CGFloat = 0
-}
-
 /// A hand-drawn scroll bar in a gutter the content reserves
 /// permanently, standing in for the system indicator on the panel's
 /// scroll views.
@@ -22,6 +12,14 @@ struct ScrollBarState: Equatable {
 /// our own thumb keeps the rows one width whether or not the content
 /// scrolls, and the bar visible whenever it does.
 ///
+/// The bar never reads the live viewport; the scroll view passes the
+/// height its frame caps at instead. The popover window grows a frame
+/// behind the content, so while it catches up the content genuinely
+/// overflows the viewport — a thumb keyed on the viewport flashes on
+/// every growth spurt (each added entry, the placeholder flow's stacked
+/// resizes). Content measured against the constant cap can't: below
+/// the cap the thumb never appears, above it it never blinks.
+///
 /// Dragging the thumb (or pressing anywhere on the track) scrolls, via
 /// the reader's proxy: scrolling to the whole content with a
 /// proportional anchor is the one continuous offset control SwiftUI
@@ -30,12 +28,15 @@ struct ScrollBarState: Equatable {
 ///
 /// It takes both halves plus the proxy — `scrollBarContent` on the
 /// scrolled content, `scrollBar` on the scroll view around it, sharing
-/// one ScrollBarState. Without the first, nothing measures the content
+/// one measured frame. Without the first, nothing measures the content
 /// and the bar silently never appears.
 struct ScrollBarModifier: ViewModifier {
     let theme: Theme
-    @Binding var state: ScrollBarState
+    @Binding var content: CGRect
     let proxy: ScrollViewProxy
+    /// The height the scroll view's frame caps at — its viewport
+    /// height whenever there is anything to scroll.
+    let height: CGFloat
 
     /// The width the content leaves free at its trailing edge.
     static let gutter: CGFloat = 12
@@ -55,55 +56,53 @@ struct ScrollBarModifier: ViewModifier {
         content
             .scrollIndicators(.never)
             .coordinateSpace(name: scrollBarSpace)
-            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
-                state.viewport = $0
-            }
             .overlay(alignment: .trailing) { track }
     }
 
-    private var scrollable: Bool {
-        state.viewport > 0 && state.content.height > state.viewport + 1
-    }
+    private var scrollable: Bool { content.height > height + 1 }
 
     private var thumbHeight: CGFloat {
-        max(Self.minThumb, state.viewport * state.viewport / state.content.height)
+        guard scrollable else { return Self.minThumb }
+        return max(Self.minThumb, height * height / content.height)
     }
+
+    /// How far the thumb's top can move along the track.
+    private var travel: CGFloat { max(height - thumbHeight, 0) }
 
     /// Progress read back from the scroll view, clamped so an
     /// overscroll bounce pins the thumb to its end instead of pushing
     /// it out of the track.
     private var settledProgress: CGFloat {
-        min(max(-state.content.minY / (state.content.height - state.viewport), 0), 1)
+        guard scrollable else { return 0 }
+        return min(max(-content.minY / (content.height - height), 0), 1)
     }
 
-    @ViewBuilder private var track: some View {
-        if scrollable {
-            let height = thumbHeight
-            let travel = state.viewport - height
-            Color.clear
-                .frame(width: Self.gutter)
-                .contentShape(Rectangle())
-                .overlay(alignment: .top) {
+    private var track: some View {
+        Color.clear
+            .frame(width: Self.gutter)
+            .contentShape(Rectangle())
+            .overlay(alignment: .top) {
+                if scrollable {
                     Capsule()
                         .fill(theme.dimmed.opacity(hovering || dragProgress != nil ? 0.6 : 0.4))
-                        .frame(width: Self.thumbWidth, height: height)
+                        .frame(width: Self.thumbWidth, height: thumbHeight)
                         .offset(y: (dragProgress ?? settledProgress) * travel)
                 }
-                .onHover { hovering = $0 }
-                .gesture(drag(travel: travel, thumb: height))
-        }
+            }
+            .onHover { hovering = $0 }
+            .gesture(drag)
     }
 
     /// Grabbing the thumb drags it from where it is; pressing the bare
     /// track jumps the thumb under the pointer and drags from there.
-    private func drag(travel: CGFloat, thumb: CGFloat) -> some Gesture {
+    private var drag: some Gesture {
         DragGesture(minimumDistance: 0)
             .onChanged { value in
-                guard travel > 0 else { return }
+                guard scrollable, travel > 0 else { return }
                 if dragProgress == nil {
                     let top = settledProgress * travel
                     let y = value.startLocation.y
-                    grabOffset = (top...top + thumb).contains(y) ? y - top : thumb / 2
+                    grabOffset = (top...top + thumbHeight).contains(y) ? y - top : thumbHeight / 2
                 }
                 let progress = min(max((value.location.y - grabOffset) / travel, 0), 1)
                 dragProgress = progress
@@ -125,19 +124,21 @@ extension View {
     /// On a scroll view's content: reserve the bar's gutter, report
     /// where the content sits, and carry the identity the bar's drag
     /// steers by.
-    func scrollBarContent(_ state: Binding<ScrollBarState>) -> some View {
+    func scrollBarContent(_ content: Binding<CGRect>) -> some View {
         padding(.trailing, ScrollBarModifier.gutter)
             .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(scrollBarSpace)) } action: {
-                state.wrappedValue.content = $0
+                content.wrappedValue = $0
             }
             .id(scrollBarContentID)
     }
 
-    /// On a scroll view, with its enclosing reader's proxy: draw the
-    /// bar over the trailing gutter. See ScrollBarModifier.
+    /// On a scroll view whose frame caps at `height`, with its
+    /// enclosing reader's proxy: draw the bar over the trailing gutter.
+    /// See ScrollBarModifier.
     func scrollBar(
-        _ theme: Theme, _ state: Binding<ScrollBarState>, _ proxy: ScrollViewProxy
+        _ theme: Theme, _ content: Binding<CGRect>, _ proxy: ScrollViewProxy,
+        height: CGFloat
     ) -> some View {
-        modifier(ScrollBarModifier(theme: theme, state: state, proxy: proxy))
+        modifier(ScrollBarModifier(theme: theme, content: content, proxy: proxy, height: height))
     }
 }

@@ -25,7 +25,7 @@ struct PromptPreview: View {
     var move: ((Int, Int) -> Void)?
 
     @State private var drag = ReorderDrag()
-    @State private var bar = ScrollBarState()
+    @State private var bar = CGRect.zero
 
     private nonisolated static let previewSpace = "preview"
     private static let markerID: AnyHashable = "marker"
@@ -53,7 +53,7 @@ struct PromptPreview: View {
                 .scrollBarContent($bar)
             }
             .frame(minHeight: minHeight, maxHeight: maxHeight)
-            .scrollBar(theme, $bar, proxy)
+            .scrollBar(theme, $bar, proxy, height: maxHeight)
             .onChange(of: entries) { follow(proxy) }
             .onChange(of: pointGap) { follow(proxy) }
         }

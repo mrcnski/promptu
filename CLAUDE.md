@@ -104,10 +104,14 @@ These are load-bearing and easy to reintroduce:
   narrows the rows and jerks their trailing edge sideways, and an overlay
   scroller shows nothing until mid-scroll. Dragging the thumb scrolls through
   `proxy.scrollTo` on the whole content with a proportional anchor — the one
-  continuous offset control SwiftUI has on macOS 14. It takes **both** halves
-  plus the reader's proxy — `.scrollBarContent($bar)` on the content and
-  `.scrollBar(theme, $bar, proxy)` on the scroll view. With only the second,
-  nothing measures the content and the bar silently never appears.
+  continuous offset control SwiftUI has on macOS 14. The bar never reads the
+  live viewport: the window resize trails the content by a frame, so during any
+  growth the content genuinely overflows and a viewport-keyed thumb flashes.
+  Each scroll view passes the constant its height caps at instead. It takes
+  **both** halves plus the reader's proxy — `.scrollBarContent($bar)` on the
+  content and `.scrollBar(theme, $bar, proxy, height:)` on the scroll view.
+  With only the second, nothing measures the content and the bar silently
+  never appears.
 - The same height rule shapes two rows that look over-engineered: the settings
   version row (its always-present "check now" pins the height while the status
   text swaps) and the history list (fixed height, single-line rows, so selecting
