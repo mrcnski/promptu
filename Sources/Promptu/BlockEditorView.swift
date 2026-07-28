@@ -33,9 +33,15 @@ struct BlockEditorView: View {
     /// A plain ScrollView + VStack, reordered by a hand-rolled
     /// DragGesture (grab a row's grip). Unlike onDrag/onDrop there is no
     /// system drag snapshot, so nothing snaps back on drop; unlike a
-    /// List it sizes to its content, so it renders in the popover.
+    /// List it renders in the popover.
+    ///
+    /// The list is boxed and pinned to one height like the history
+    /// list, so ←/→ can cycle pages of different lengths without
+    /// resizing the popover — a height change while the panel is open
+    /// repaints the window a frame ahead of its content, which reads
+    /// as an app-wide flash.
     private var list: some View {
-        VStack(alignment: .leading, spacing: Self.rowSpacing) {
+        VStack(alignment: .leading, spacing: 8) {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: Self.rowSpacing) {
@@ -51,9 +57,12 @@ struct BlockEditorView: View {
                     .onPreferenceChange(ReorderFrameKey.self) { drag.measure($0) }
                     .scrollBarContent($bar)
                 }
-                .frame(maxHeight: Self.listHeight)
+                .frame(height: Self.listHeight, alignment: .top)
                 .scrollBar(theme, $bar, proxy, height: Self.listHeight)
             }
+            .padding(8)
+            .background(theme.surface, in: RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(theme.dimmed.opacity(0.15)))
             Button {
                 session.beginDraft()
             } label: {
