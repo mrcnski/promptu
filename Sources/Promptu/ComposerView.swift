@@ -185,7 +185,9 @@ struct ComposerView: View {
     }
 
     private var editField: some View {
-        EditField(session: session, theme: theme, fieldFocused: $fieldFocused)
+        EditField(
+            session: session, theme: theme, fieldFocused: $fieldFocused,
+            metaPrefixArmed: { pendingEscape != nil })
     }
 
     /// Keys while a text field is focused. Emacs meta keys —
@@ -671,22 +673,34 @@ struct ComposerView: View {
 /// on submit: routing keystrokes through the session would re-render
 /// the whole panel per key, and the field's end-editing write-back on
 /// teardown would fight submitEdit's close (the old enter-twice bug).
-/// The vertical axis lets a multi-line text — a whole-prompt blob —
-/// grow the field; Return still submits, ⌥⏎ inserts a newline.
 ///
-/// The field grows only to a cap and scrolls past it, in the panel's
-/// own scroll-bar dress: unbounded, a large prompt grew the panel past
-/// the screen with no way to reach the rest. The chrome sits on the
-/// scroll view, not the field, so the border stays put while the text
-/// scrolls within it.
+/// A TextEditor (a real NSTextView) at a fixed height, after two
+/// hand-rolled shapes failed: unbounded, a large prompt grew the panel
+/// past the screen; a TextField in a capped ScrollView either sat at
+/// the full cap around one line (a bare ScrollView is greedy) or,
+/// pinned to the text's measured height, resized the panel per wrapped
+/// line — flashing the whole app each time — and never followed the
+/// caret past the cap. The text view scrolls internally and keeps the
+/// caret visible on its own; the fixed height means typing never
+/// resizes the panel. Whole-prompt edits get a taller box than single
+/// entries — a blob wants reading room a one-liner doesn't.
+///
+/// A text view inserts a newline on Return, so submit needs the
+/// interception below; it must stand down for ⌥⏎ and while the ESC
+/// meta prefix is armed (metaPrefixArmed), letting both fall through
+/// to handleFieldKey's newline forwarding — or ESC ⏎ (a remap tool's
+/// physical ⌥⏎) would submit instead of inserting.
 private struct EditField: View {
     @ObservedObject var session: Session
     let theme: Theme
     @FocusState.Binding var fieldFocused: Bool
+    /// Reads ComposerView's ESC-prefix state at keypress time; a
+    /// stored value would be stale by the ⏎ of an ESC ⏎ pair.
+    let metaPrefixArmed: () -> Bool
     @State private var text = ""
-    @State private var bar = CGRect.zero
 
-    private static let maxFieldHeight: CGFloat = 180
+    private static let entryHeight: CGFloat = 64
+    private static let wholePromptHeight: CGFloat = 160
 
     /// What the open edit acts on — the field itself looks the same
     /// for an entry and for the whole prompt.
@@ -703,27 +717,38 @@ private struct EditField: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            ScrollViewReader { proxy in
-                ScrollView {
-                    TextField(
-                        session.editingAll ? "edit prompt" : "edit entry",
-                        text: $text, axis: .vertical
-                    )
-                    .textFieldStyle(.plain)
-                    .foregroundStyle(theme.foreground)
-                    .focused($fieldFocused)
-                    .onAppear { text = session.editInput ?? "" }
-                    .onSubmit { session.submitEdit(text) }
-                    .onExitCommand { session.cancelEdit() }
-                    .scrollBarContent($bar)
+            TextEditor(text: $text)
+                .font(.body)
+                .foregroundStyle(theme.foreground)
+                .scrollContentBackground(.hidden)
+                .focused($fieldFocused)
+                .frame(
+                    height: session.editingAll ? Self.wholePromptHeight : Self.entryHeight
+                )
+                .onAppear { text = session.editInput ?? "" }
+                .onKeyPress(keys: [.return], phases: .down) { press in
+                    guard press.modifiers.isEmpty, !metaPrefixArmed() else { return .ignored }
+                    session.submitEdit(text)
+                    return .handled
                 }
-                .frame(maxHeight: Self.maxFieldHeight)
-                .scrollBar(theme, $bar, proxy, height: Self.maxFieldHeight)
-            }
-            .padding(6)
-            .background(theme.surface, in: RoundedRectangle(cornerRadius: 6))
-            .overlay(
-                RoundedRectangle(cornerRadius: 6).strokeBorder(theme.key.opacity(0.45)))
+                .onExitCommand { session.cancelEdit() }
+                .onChange(of: fieldFocused) { _, focused in
+                    guard focused else { return }
+                    // Select-all parity with the TextField this box
+                    // replaced — typing over the old text is the common
+                    // case. macOS 14's TextEditor has no selection API,
+                    // so reach the text view through the responder
+                    // chain once focus has landed.
+                    DispatchQueue.main.async {
+                        MainActor.assumeIsolated {
+                            (NSApp.keyWindow?.firstResponder as? NSTextView)?.selectAll(nil)
+                        }
+                    }
+                }
+                .padding(6)
+                .background(theme.surface, in: RoundedRectangle(cornerRadius: 6))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6).strokeBorder(theme.key.opacity(0.45)))
             Text(caption)
                 .font(.caption).foregroundStyle(theme.dimmed)
         }
