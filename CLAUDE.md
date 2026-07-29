@@ -98,9 +98,12 @@ These are load-bearing and easy to reintroduce:
   when another menubar app opens: a status-bar click deactivates nobody, and
   other menubar apps fold there only because they were never active — losing
   key focus is enough. The global mouse-down monitor installed while the panel
-  shows is what closes it. It sees exactly the clicks that belong to other
-  processes and never Promptu's own, so clicking the popover or the status
-  button doesn't fight it — the monitor is not redundant with `.transient`.
+  shows is what closes it — it is not redundant with `.transient`. Despite the
+  documented contract, the "global" monitor also receives some of Promptu's
+  *own* clicks (macOS 15, reproduced on two machines: clicks on the panel
+  arrived carrying the panel's own window number and closed it under the
+  user), so the handler drops any event whose window number maps to one of
+  Promptu's windows — that guard is load-bearing.
 - A pinned theme colors only the content; the popover *frame* — the arrow —
   is drawn from the window's appearance, which otherwise follows the system
   (Nimbus pinned on a light system wore a light arrow on a dark panel).
