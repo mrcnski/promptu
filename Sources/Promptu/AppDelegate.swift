@@ -37,9 +37,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     /// popover shows. Transient behavior covers most outside clicks,
     /// but not the status bar: a click there deactivates nobody, so
     /// opening another menubar app left the panel hanging open under
-    /// it. A global monitor sees exactly the missing clicks — they
-    /// belong to other processes; Promptu's own (the popover, the
-    /// status button) never reach it, so toggling is untouched.
+    /// it. The documented contract says a global monitor sees only
+    /// other processes' clicks — but in the wild (macOS 15) it also
+    /// receives some of Promptu's own: panel clicks arrived carrying
+    /// the panel's own window number and closed it under the user.
+    /// The handler must therefore drop events aimed at our windows.
     private var clickMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -239,12 +241,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         if clickMonitor == nil {
             clickMonitor = NSEvent.addGlobalMonitorForEvents(
                 matching: [.leftMouseDown, .rightMouseDown]
-            ) { [weak self] _ in
+            ) { [weak self] event in
+                let clickWindowNumber = event.windowNumber
                 // No hide (see close): the click is taking the user
                 // somewhere else, and yanking focus back would fight it.
                 DispatchQueue.main.async {
                     MainActor.assumeIsolated {
                         guard let self, self.popover.isShown else { return }
+                        // The contract violation above: an event whose
+                        // window is ours is a click on Promptu itself,
+                        // not the outside click this monitor exists for.
+                        if NSApp.window(withWindowNumber: clickWindowNumber) != nil { return }
                         self.popover.performClose(nil)
                     }
                 }
