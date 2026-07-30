@@ -549,6 +549,7 @@ struct ComposerView: View {
             if session.screen == .composer {
                 HStack {
                     hintButton("⌘Z", "undo", enabled: session.canUndo) { session.undo() }
+                    hintButton("⇧⌘Z", "redo", enabled: session.canRedo) { session.redo() }
                     Spacer()
                     hintButton("⏎", "copy", enabled: !session.isEmpty) {
                         if session.finish() { close() }
@@ -656,6 +657,7 @@ struct ComposerView: View {
                 return .handled
             case "z":
                 if press.modifiers.contains(.shift) {
+                    if session.canRedo { flashHint("⇧⌘Z") }
                     session.redo()
                 } else {
                     if session.canUndo { flashHint("⌘Z") }

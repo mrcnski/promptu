@@ -243,6 +243,22 @@ import Testing
     #expect(c.canUndo)
 }
 
+@Test func canRedoTracksTheRedoStack() {
+    var c = Composition()
+    #expect(!c.canRedo)
+    c.add("a")
+    c.undo()
+    #expect(c.canRedo)
+    c.redo()
+    #expect(!c.canRedo)
+    // A fresh change after an undo clears the redo stack (see
+    // newChangeClearsRedo) — canRedo must reflect that, not just
+    // report stale history from before the new change.
+    c.undo()
+    c.add("b")
+    #expect(!c.canRedo)
+}
+
 // MARK: - preview
 
 @Test func previewWithoutMovedPointHasNoMarker() {

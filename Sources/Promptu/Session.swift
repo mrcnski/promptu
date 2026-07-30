@@ -134,6 +134,7 @@ final class Session: ObservableObject {
     /// edit act on.
     var hasTarget: Bool { composition.targetEntry != nil }
     var canUndo: Bool { composition.canUndo }
+    var canRedo: Bool { composition.canRedo }
     var canPointUp: Bool { composition.pointIndex > 0 }
     var canPointDown: Bool { composition.point != nil }
 

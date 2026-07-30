@@ -32,6 +32,9 @@ public struct Composition: Equatable, Sendable {
     /// Whether there is a change to undo.
     public var canUndo: Bool { !undoStack.isEmpty }
 
+    /// Whether there is a change to redo.
+    public var canRedo: Bool { !redoStack.isEmpty }
+
     public var composed: String { Compose.compose(entries) }
 
     /// The composed prompt with ▮ at a moved point's gap, on its own
