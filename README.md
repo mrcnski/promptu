@@ -94,6 +94,7 @@ settings or the history view).
 ```sh
 make test      # run the core tests
 make run       # run from the checkout
+make dev       # auto-rebuild and relaunch on save (brew install watchexec)
 make app       # build dist/Promptu.app (ad-hoc signed)
 make install   # copy it to /Applications
 ```

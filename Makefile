@@ -3,7 +3,7 @@ BIN := .build/release/Promptu
 ICONSET := .build/AppIcon.iconset
 VERSION := $(shell /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Info.plist)
 
-.PHONY: app icon run test install zip clean
+.PHONY: app icon run dev test install zip clean
 
 # Host-arch only: a universal (--arch arm64 --arch x86_64) build needs
 # full Xcode, not just the Command Line Tools.
@@ -24,6 +24,17 @@ icon:
 
 run:
 	swift run
+
+# The edit loop: rebuild and relaunch on every source change. Sweeps
+# up any earlier loop and stray instance first.
+#
+# The -x -f pair matches watchexec's exact command line, not this recipe's own
+# shell (a plain -f pattern would kill it).
+dev:
+	@command -v watchexec >/dev/null || { echo "make dev needs watchexec (brew install watchexec)"; exit 1; }
+	-pkill -x -f "watchexec -r -e swift -- swift run"
+	-pkill -x Promptu
+	watchexec -r -e swift -- swift run
 
 test:
 	swift test

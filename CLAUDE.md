@@ -17,6 +17,7 @@ Requires macOS 14+ and a Swift 6 toolchain.
 ```sh
 make test      # swift test — the PromptuCore suite
 make run       # swift run, straight from the checkout
+make dev       # make run, auto-restarted on every source save (watchexec)
 make app       # build dist/Promptu.app (ad-hoc signed), regenerating the icon
 make install   # copy dist/Promptu.app to /Applications
 make zip       # dist/Promptu-<version>.zip, the release artifact
