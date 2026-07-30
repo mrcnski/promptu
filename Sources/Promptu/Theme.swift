@@ -14,6 +14,9 @@ struct Theme {
     /// A calm accent for low-stakes attention (the update notice) —
     /// distinct from key (action) and error (problem).
     let notice: Color
+    /// Positive confirmation — the green a block's key badge turns
+    /// the moment its key adds it to the prompt.
+    let success: Color
 
     /// Catppuccin Latte (light).
     static let latte = Theme(
@@ -25,7 +28,8 @@ struct Theme {
         key: Color(hex: 0x1E66F5),  // blue
         placeholder: Color(hex: 0xFE640B),  // peach
         error: Color(hex: 0xD20F39),  // red
-        notice: Color(hex: 0xDF8E1D))  // yellow
+        notice: Color(hex: 0xDF8E1D),  // yellow
+        success: Color(hex: 0x2D7A1E))  // green, darkened
 
     /// Nimbus (dark).
     static let nimbus = Theme(
@@ -37,7 +41,8 @@ struct Theme {
         key: Color(hex: 0x70A5E1),  // light-blue
         placeholder: Color(hex: 0xDB931F),  // orange
         error: Color(hex: 0xD65946),  // red
-        notice: Color(hex: 0xD4BB6A))  // muted yellow
+        notice: Color(hex: 0xD4BB6A),  // muted yellow
+        success: Color(hex: 0x058945))  // darker-green
 
     static func matching(_ scheme: ColorScheme) -> Theme {
         scheme == .dark ? .nimbus : .latte

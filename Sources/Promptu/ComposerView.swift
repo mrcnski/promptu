@@ -17,6 +17,11 @@ struct ComposerView: View {
     /// runs the deferred lone-ESC action when it fires.
     @State private var pendingEscape: DispatchWorkItem?
 
+    /// The key of the block whose badge is wearing the just-pressed
+    /// green (see `flash`), and the pending revert that ends it.
+    @State private var flashedKey: String?
+    @State private var flashRevert: DispatchWorkItem?
+
     private var theme: Theme { themeChoice.theme(for: colorScheme) }
     private var fieldShown: Bool {
         session.pending != nil || session.editInput != nil || session.draft != nil
@@ -147,7 +152,9 @@ struct ComposerView: View {
                     session.add(block)
                 } label: {
                     HStack(spacing: 8) {
-                        KeyBadge(theme: theme, key: block.key)
+                        KeyBadge(
+                            theme: theme, key: block.key,
+                            flashed: flashedKey == block.key)
                         blockLabel(block)
                             .foregroundStyle(theme.foreground)
                             .lineLimit(1)
@@ -159,6 +166,29 @@ struct ComposerView: View {
                 .buttonStyle(HoverButtonStyle(theme: theme))
             }
         }
+    }
+
+    /// How long a just-pressed badge wears the green before snapping
+    /// back.
+    private static let flashDuration: TimeInterval = 0.2
+
+    /// Turns a block's key badge green for a beat when its key adds
+    /// it: with hands on the keyboard, nothing else in the grid
+    /// confirms which block the press landed on. Cancel-and-rearm, so
+    /// a run of presses keeps the latest badge lit for its full beat.
+    /// A timed blink has no instant equivalent, so with animations
+    /// off it simply doesn't run rather than passing through
+    /// `Motion.gated`.
+    private func flash(_ block: Block) {
+        guard Motion.enabled else { return }
+        flashRevert?.cancel()
+        flashedKey = block.key
+        let work = DispatchWorkItem {
+            flashedKey = nil
+            flashRevert = nil
+        }
+        flashRevert = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.flashDuration, execute: work)
     }
 
     /// The block's menu label: its desc plus colored <placeholder> hints,
@@ -180,7 +210,14 @@ struct ComposerView: View {
         )
         .fieldChrome(theme)
         .focused($fieldFocused)
-        .onSubmit { session.submitPlaceholder() }
+        .onSubmit {
+            let block = session.pending?.block
+            // Flash only once the last placeholder lands and the grid
+            // returns; a mid-block submit just advances to the next
+            // placeholder behind the still-open field.
+            session.submitPlaceholder()
+            if session.pending == nil, let block { flash(block) }
+        }
         .onExitCommand { session.cancelPending() }
     }
 
@@ -663,6 +700,10 @@ struct ComposerView: View {
         }
         if let block = session.blocks.first(where: { $0.key == press.characters }) {
             session.add(block)
+            // A block with placeholders opens its field over the grid,
+            // so an immediate flash would burn out unseen; it flashes
+            // on the field's submit instead (see placeholderField).
+            if session.pending == nil { flash(block) }
             return .handled
         }
         return .ignored
@@ -781,13 +822,20 @@ extension View {
 struct KeyBadge: View {
     let theme: Theme
     let key: String
+    /// Wearing the just-pressed confirmation green (see
+    /// `ComposerView.flash`); the editor's list never lights it.
+    var flashed: Bool = false
 
     var body: some View {
+        let tint = flashed ? theme.success : theme.key
         Text(key)
             .font(.system(.body, design: .monospaced).bold())
-            .foregroundStyle(theme.key)
+            .foregroundStyle(tint)
             .frame(width: 22, height: 22)
-            .background(theme.key.opacity(0.12), in: RoundedRectangle(cornerRadius: 5))
+            .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 5))
+            .overlay(
+                RoundedRectangle(cornerRadius: 5)
+                    .strokeBorder(tint.opacity(flashed ? 1 : 0), lineWidth: 1))
     }
 }
 
