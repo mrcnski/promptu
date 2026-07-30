@@ -94,16 +94,20 @@ These are load-bearing and easy to reintroduce:
   to an accessory app, leaving the previous app frontmost under the popover.
   Despite the deprecation notice, the forced call is the one that works
   (verified on macOS 15.7).
-- That forced activation is also why `.transient` alone can't close the panel
-  when another menubar app opens: a status-bar click deactivates nobody, and
-  other menubar apps fold there only because they were never active — losing
-  key focus is enough. The global mouse-down monitor installed while the panel
-  shows is what closes it — it is not redundant with `.transient`. Despite the
-  documented contract, the "global" monitor also receives some of Promptu's
-  *own* clicks (macOS 15, reproduced on two machines: clicks on the panel
-  arrived carrying the panel's own window number and closed it under the
-  user), so the handler drops any event whose window number maps to one of
-  Promptu's windows — that guard is load-bearing.
+- The popover is `.applicationDefined`, not `.transient`: transient's hidden
+  machinery could close the panel mid-click on the status icon — a close no
+  guard of ours can see or veto, which read as "the click closed it, then the
+  button's action reopened it". Every close is now an explicit path: the
+  toggle, the composer's ⏎/esc, a deactivation observer (clicking into
+  another app), and a global mouse-down monitor for menubar clicks — which
+  deactivate nobody, the reason transient alone never folded the panel when
+  another menubar app opened. Despite the documented contract, that "global"
+  monitor also receives some of Promptu's *own* clicks (macOS 15, reproduced
+  on two machines: panel clicks arrived carrying the panel's own window
+  number and closed the panel under the user). The handler therefore drops
+  events whose window number maps to one of Promptu's windows, and events
+  over the status item's frame — a misdelivered status click can carry a
+  window number that is not ours. Both guards are load-bearing.
 - A pinned theme colors only the content; the popover *frame* — the arrow —
   is drawn from the window's appearance, which otherwise follows the system
   (Nimbus pinned on a light system wore a light arrow on a dark panel).
