@@ -79,7 +79,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             self?.updateDot.isHidden = update == nil
         }
 
-        popover.behavior = .transient
+        // .applicationDefined, not .transient: every close is a line
+        // of ours. Transient's hidden machinery was a second actor in
+        // the status-click races — it can close the panel mid-click,
+        // and no guard on our side can see or veto it. Its two real
+        // services are replaced explicitly: deactivation (clicking
+        // into another app) closes via the observer below, and
+        // menubar clicks — which deactivate nobody — via the click
+        // monitor (see clickMonitor).
+        popover.behavior = .applicationDefined
         popover.delegate = self
         let hosting = NSHostingController(
             rootView: ComposerView(session: session, updateChecker: updateChecker) {
@@ -101,6 +109,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             forName: UserDefaults.didChangeNotification, object: nil, queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.applyThemeAppearance() }
+        }
+
+        // One half of what .transient used to do: clicking into
+        // another app deactivates Promptu — fold the panel. No hide:
+        // focus already went where the click did. Hiding on our own
+        // close (hideWhenClosed) fires this too, against an
+        // already-closed popover, which performClose ignores.
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didResignActiveNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, self.popover.isShown else { return }
+                self.popover.performClose(nil)
+            }
         }
 
         registerHotKey()
@@ -190,9 +212,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     /// window as closed: reopening clears the wedge (seen once in the
     /// wild — show succeeded invisibly and every other press then
     /// toggled a phantom), where closing it would just hide the app.
-    @objc private func toggle() {
+    private var visiblyShown: Bool {
         let win = popover.contentViewController?.view.window
-        let visiblyShown = popover.isShown && (win?.isVisible ?? false)
+        return popover.isShown && (win?.isVisible ?? false)
+    }
+
+    @objc private func toggle() {
         visiblyShown ? close() : open()
     }
 
@@ -252,6 +277,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
                         // window is ours is a click on Promptu itself,
                         // not the outside click this monitor exists for.
                         if NSApp.window(withWindowNumber: clickWindowNumber) != nil { return }
+                        // A status-button click is the toggle's to
+                        // handle, and its misdelivered copy may carry
+                        // a window number that resolves to none of our
+                        // windows (the menubar is not ours) — so match
+                        // it by position instead and stand down.
+                        if let statusWindow = self.statusItem.button?.window,
+                            statusWindow.frame.contains(NSEvent.mouseLocation)
+                        {
+                            return
+                        }
                         self.popover.performClose(nil)
                     }
                 }
