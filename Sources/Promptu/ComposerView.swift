@@ -22,6 +22,11 @@ struct ComposerView: View {
     @State private var flashedKey: String?
     @State private var flashRevert: DispatchWorkItem?
 
+    /// The footer hint (by its key label) lit by a key press,
+    /// mirroring flashedKey for the block grid.
+    @State private var flashedHint: String?
+    @State private var hintFlashRevert: DispatchWorkItem?
+
     private var theme: Theme { themeChoice.theme(for: colorScheme) }
     private var fieldShown: Bool {
         session.pending != nil || session.editInput != nil || session.draft != nil
@@ -191,6 +196,27 @@ struct ComposerView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.flashDuration, execute: work)
     }
 
+    /// The footer-hint counterpart of `flash`: lights the hint whose
+    /// key was pressed, giving the keyboard the feedback its button
+    /// gives the mouse. Callers only flash a hint whose action
+    /// applies — a grayed hint stays quiet, like the button it
+    /// mirrors — and skip keys that replace the view under the flash
+    /// (negate's row swap, copy's panel close, the screen switches).
+    /// A press that disables its own hint (the last ⌫, the final ⌘Z)
+    /// holds full strength for the beat; the gray lands only when the
+    /// flash clears.
+    private func flashHint(_ key: String) {
+        guard Motion.enabled else { return }
+        hintFlashRevert?.cancel()
+        flashedHint = key
+        let work = DispatchWorkItem {
+            flashedHint = nil
+            hintFlashRevert = nil
+        }
+        hintFlashRevert = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.flashDuration, execute: work)
+    }
+
     /// The block's menu label: its desc plus colored <placeholder> hints,
     /// standing alone when the desc is empty — the same rules as Emacs
     /// promptu's `promptu--block-description`.
@@ -343,6 +369,7 @@ struct ComposerView: View {
             }
             return .handled
         case .delete, KeyEquivalent("\u{7F}"):
+            if !session.history.isEmpty { flashHint("⌫") }
             session.deleteHistory(at: session.historySelection)
             return .handled
         default:
@@ -408,7 +435,13 @@ struct ComposerView: View {
             hint(key, label)
         }
         .buttonStyle(HoverButtonStyle(theme: theme, horizontalPadding: 3))
-        .opacity(available ? 1 : 0.4)
+        .background(
+            flashedHint == key ? theme.success.opacity(0.15) : .clear,
+            in: RoundedRectangle(cornerRadius: 4))
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .strokeBorder(theme.success.opacity(flashedHint == key ? 1 : 0), lineWidth: 1))
+        .opacity(available || flashedHint == key ? 1 : 0.4)
         .allowsHitTesting(available)
     }
 
@@ -556,7 +589,13 @@ struct ComposerView: View {
         let available = enabled && !fieldShown
         return Button { if available { move() } } label: { hintKey(key) }
             .buttonStyle(HoverButtonStyle(theme: theme, horizontalPadding: 3))
-            .opacity(available ? 1 : 0.4)
+            .background(
+                flashedHint == key ? theme.success.opacity(0.15) : .clear,
+                in: RoundedRectangle(cornerRadius: 4))
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .strokeBorder(theme.success.opacity(flashedHint == key ? 1 : 0), lineWidth: 1))
+            .opacity(available || flashedHint == key ? 1 : 0.4)
             .allowsHitTesting(available)
     }
 
@@ -607,11 +646,21 @@ struct ComposerView: View {
         if command {
             switch press.key.character.lowercased() {
             case "e":
-                press.modifiers.contains(.shift)
-                    ? session.beginEditAll() : session.beginEdit()
+                if press.modifiers.contains(.shift) {
+                    if !session.isEmpty { flashHint("⇧⌘E") }
+                    session.beginEditAll()
+                } else {
+                    if session.hasTarget { flashHint("⌘E") }
+                    session.beginEdit()
+                }
                 return .handled
             case "z":
-                press.modifiers.contains(.shift) ? session.redo() : session.undo()
+                if press.modifiers.contains(.shift) {
+                    session.redo()
+                } else {
+                    if session.canUndo { flashHint("⌘Z") }
+                    session.undo()
+                }
                 return .handled
             default:
                 return .ignored
@@ -635,8 +684,14 @@ struct ComposerView: View {
 
         if press.modifiers.contains(.control) {
             switch press.key.character {
-            case "p": session.pointUp(); return .handled
-            case "n": session.pointDown(); return .handled
+            case "p":
+                if session.canPointUp { flashHint("↑") }
+                session.pointUp()
+                return .handled
+            case "n":
+                if session.canPointDown { flashHint("↓") }
+                session.pointDown()
+                return .handled
             default: return .ignored
             }
         }
@@ -646,9 +701,11 @@ struct ComposerView: View {
             if session.finish() { close() }
             return .handled
         case .upArrow:
+            if session.canPointUp { flashHint("↑") }
             session.pointUp()
             return .handled
         case .downArrow:
+            if session.canPointDown { flashHint("↓") }
             session.pointDown()
             return .handled
         case .leftArrow:
@@ -659,6 +716,7 @@ struct ComposerView: View {
             return .handled
         // Backspace arrives as DEL (U+7F), not KeyEquivalent.delete (U+8).
         case .delete, KeyEquivalent("\u{7F}"):
+            if session.hasTarget { flashHint("⌫") }
             session.removeEntry()
             return .handled
         case .escape:
