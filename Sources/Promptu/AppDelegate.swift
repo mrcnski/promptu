@@ -33,6 +33,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     /// app hides — handing focus back — only once it has played,
     /// where hiding immediately would cut it to a blink.
     private var hideWhenClosed = false
+    /// The app frontmost before open() stole activation, so close()
+    /// can hand focus straight back without waiting out the fade.
+    private var previousApp: NSRunningApplication?
     /// Closes the panel on a click in another app, installed while the
     /// popover shows. Transient behavior covers most outside clicks,
     /// but not the status bar: a click there deactivates nobody, so
@@ -120,7 +123,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             forName: NSApplication.didResignActiveNotification, object: nil, queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated {
-                guard let self, self.popover.isShown else { return }
+                // close()'s focus handoff resigns us too, mid-fade;
+                // that close is already in flight (hideWhenClosed), so
+                // stand down rather than re-enter performClose.
+                guard let self, self.popover.isShown, !self.hideWhenClosed else { return }
                 self.popover.performClose(nil)
             }
         }
@@ -252,6 +258,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         // A wedged (shown-but-invisible) popover must be fully closed
         // before show, or show is a no-op against the phantom.
         if popover.isShown { popover.performClose(nil) }
+        // Remember who had focus — but never Promptu itself, or a
+        // wedge-recovery re-open would hand focus back to us.
+        if let front = NSWorkspace.shared.frontmostApplication,
+            front.processIdentifier != ProcessInfo.processInfo.processIdentifier
+        {
+            previousApp = front
+        }
         // Forced activation, after unhiding (close hides the app):
         // macOS denies an accessory app's cooperative NSApp.activate(),
         // leaving the previous app frontmost under the popover, and
@@ -295,13 +308,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     }
 
     /// Closes the panel and hands focus back to the previous app, so a
-    /// finished prompt can be pasted immediately. The hide waits for
-    /// the close animation (see popoverDidClose) — hiding here would
-    /// cut it to a blink.
+    /// finished prompt can be pasted immediately. Focus moves the
+    /// moment the close begins: activating the previous app leaves the
+    /// fade running, where waiting for the animation's end (the old
+    /// deferred-hide route) left a beat of dead time after the panel
+    /// was visually gone. The deferred hide in popoverDidClose stays
+    /// as the fallback for when no previous app survives to take
+    /// focus — hiding *here* instead would cut the fade to a blink.
     private func close() {
         guard popover.isShown else { return NSApp.hide(nil) }
         popover.animates = Motion.enabled
         hideWhenClosed = true
         popover.performClose(nil)
+        if let previousApp, !previousApp.isTerminated {
+            previousApp.activate()
+        }
     }
 }
