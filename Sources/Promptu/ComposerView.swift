@@ -17,15 +17,18 @@ struct ComposerView: View {
     /// runs the deferred lone-ESC action when it fires.
     @State private var pendingEscape: DispatchWorkItem?
 
-    /// The key of the block whose badge is wearing the just-pressed
-    /// green (see `flash`), and the pending revert that ends it.
-    @State private var flashedKey: String?
-    @State private var flashRevert: DispatchWorkItem?
+    /// The grid's badge lamp: which block key is wearing the
+    /// just-pressed green. With hands on the keyboard, nothing else in
+    /// the grid confirms which block a press landed on.
+    @StateObject private var keyFlash = Flash()
 
-    /// The footer hint (by its key label) lit by a key press,
-    /// mirroring flashedKey for the block grid.
-    @State private var flashedHint: String?
-    @State private var hintFlashRevert: DispatchWorkItem?
+    /// The footer's lamp, keyed by hint label — the keyboard's
+    /// counterpart of the buttons' hover. Callers only fire it for a
+    /// hint whose action applies — a grayed hint stays quiet, like the
+    /// button it mirrors — and skip keys that replace the view under
+    /// the flash (negate's row swap, copy's panel close, the screen
+    /// switches).
+    @StateObject private var hintFlash = Flash()
 
     private var theme: Theme { themeChoice.theme(for: colorScheme) }
     private var fieldShown: Bool {
@@ -159,7 +162,7 @@ struct ComposerView: View {
                     HStack(spacing: 8) {
                         KeyBadge(
                             theme: theme, key: block.key,
-                            flashed: flashedKey == block.key)
+                            flashed: keyFlash.lit == block.key)
                         blockLabel(block)
                             .foregroundStyle(theme.foreground)
                             .lineLimit(1)
@@ -171,50 +174,6 @@ struct ComposerView: View {
                 .buttonStyle(HoverButtonStyle(theme: theme))
             }
         }
-    }
-
-    /// How long a just-pressed badge wears the green before snapping
-    /// back.
-    private static let flashDuration: TimeInterval = 0.2
-
-    /// Turns a block's key badge green for a beat when its key adds
-    /// it: with hands on the keyboard, nothing else in the grid
-    /// confirms which block the press landed on. Cancel-and-rearm, so
-    /// a run of presses keeps the latest badge lit for its full beat.
-    /// A timed blink has no instant equivalent, so with animations
-    /// off it simply doesn't run rather than passing through
-    /// `Motion.gated`.
-    private func flash(_ block: Block) {
-        guard Motion.enabled else { return }
-        flashRevert?.cancel()
-        flashedKey = block.key
-        let work = DispatchWorkItem {
-            flashedKey = nil
-            flashRevert = nil
-        }
-        flashRevert = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + Self.flashDuration, execute: work)
-    }
-
-    /// The footer-hint counterpart of `flash`: lights the hint whose
-    /// key was pressed, giving the keyboard the feedback its button
-    /// gives the mouse. Callers only flash a hint whose action
-    /// applies — a grayed hint stays quiet, like the button it
-    /// mirrors — and skip keys that replace the view under the flash
-    /// (negate's row swap, copy's panel close, the screen switches).
-    /// A press that disables its own hint (the last ⌫, the final ⌘Z)
-    /// holds full strength for the beat; the gray lands only when the
-    /// flash clears.
-    private func flashHint(_ key: String) {
-        guard Motion.enabled else { return }
-        hintFlashRevert?.cancel()
-        flashedHint = key
-        let work = DispatchWorkItem {
-            flashedHint = nil
-            hintFlashRevert = nil
-        }
-        hintFlashRevert = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + Self.flashDuration, execute: work)
     }
 
     /// The block's menu label: its desc plus colored <placeholder> hints,
@@ -242,7 +201,7 @@ struct ComposerView: View {
             // returns; a mid-block submit just advances to the next
             // placeholder behind the still-open field.
             session.submitPlaceholder()
-            if session.pending == nil, let block { flash(block) }
+            if session.pending == nil, let block { keyFlash.fire(block.key) }
         }
         .onExitCommand { session.cancelPending() }
     }
@@ -369,7 +328,7 @@ struct ComposerView: View {
             }
             return .handled
         case .delete, KeyEquivalent("\u{7F}"):
-            if !session.history.isEmpty { flashHint("⌫") }
+            if !session.history.isEmpty { hintFlash.fire("⌫") }
             session.deleteHistory(at: session.historySelection)
             return .handled
         default:
@@ -435,14 +394,7 @@ struct ComposerView: View {
             hint(key, label)
         }
         .buttonStyle(HoverButtonStyle(theme: theme, horizontalPadding: 3))
-        .background(
-            flashedHint == key ? theme.success.opacity(0.15) : .clear,
-            in: RoundedRectangle(cornerRadius: 4))
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .strokeBorder(theme.success.opacity(flashedHint == key ? 1 : 0), lineWidth: 1))
-        .opacity(available || flashedHint == key ? 1 : 0.4)
-        .allowsHitTesting(available)
+        .modifier(HintFlashChrome(theme: theme, lit: hintFlash.lit == key, available: available))
     }
 
     /// A hint that is always available, unlike hintButton. Both use the
@@ -590,14 +542,7 @@ struct ComposerView: View {
         let available = enabled && !fieldShown
         return Button { if available { move() } } label: { hintKey(key) }
             .buttonStyle(HoverButtonStyle(theme: theme, horizontalPadding: 3))
-            .background(
-                flashedHint == key ? theme.success.opacity(0.15) : .clear,
-                in: RoundedRectangle(cornerRadius: 4))
-            .overlay(
-                RoundedRectangle(cornerRadius: 4)
-                    .strokeBorder(theme.success.opacity(flashedHint == key ? 1 : 0), lineWidth: 1))
-            .opacity(available || flashedHint == key ? 1 : 0.4)
-            .allowsHitTesting(available)
+            .modifier(HintFlashChrome(theme: theme, lit: hintFlash.lit == key, available: available))
     }
 
     private func handleKey(_ press: KeyPress) -> KeyPress.Result {
@@ -648,19 +593,19 @@ struct ComposerView: View {
             switch press.key.character.lowercased() {
             case "e":
                 if press.modifiers.contains(.shift) {
-                    if !session.isEmpty { flashHint("⇧⌘E") }
+                    if !session.isEmpty { hintFlash.fire("⇧⌘E") }
                     session.beginEditAll()
                 } else {
-                    if session.hasTarget { flashHint("⌘E") }
+                    if session.hasTarget { hintFlash.fire("⌘E") }
                     session.beginEdit()
                 }
                 return .handled
             case "z":
                 if press.modifiers.contains(.shift) {
-                    if session.canRedo { flashHint("⇧⌘Z") }
+                    if session.canRedo { hintFlash.fire("⇧⌘Z") }
                     session.redo()
                 } else {
-                    if session.canUndo { flashHint("⌘Z") }
+                    if session.canUndo { hintFlash.fire("⌘Z") }
                     session.undo()
                 }
                 return .handled
@@ -687,11 +632,11 @@ struct ComposerView: View {
         if press.modifiers.contains(.control) {
             switch press.key.character {
             case "p":
-                if session.canPointUp { flashHint("↑") }
+                if session.canPointUp { hintFlash.fire("↑") }
                 session.pointUp()
                 return .handled
             case "n":
-                if session.canPointDown { flashHint("↓") }
+                if session.canPointDown { hintFlash.fire("↓") }
                 session.pointDown()
                 return .handled
             default: return .ignored
@@ -703,11 +648,11 @@ struct ComposerView: View {
             if session.finish() { close() }
             return .handled
         case .upArrow:
-            if session.canPointUp { flashHint("↑") }
+            if session.canPointUp { hintFlash.fire("↑") }
             session.pointUp()
             return .handled
         case .downArrow:
-            if session.canPointDown { flashHint("↓") }
+            if session.canPointDown { hintFlash.fire("↓") }
             session.pointDown()
             return .handled
         case .leftArrow:
@@ -718,7 +663,7 @@ struct ComposerView: View {
             return .handled
         // Backspace arrives as DEL (U+7F), not KeyEquivalent.delete (U+8).
         case .delete, KeyEquivalent("\u{7F}"):
-            if session.hasTarget { flashHint("⌫") }
+            if session.hasTarget { hintFlash.fire("⌫") }
             session.removeEntry()
             return .handled
         case .escape:
@@ -763,7 +708,7 @@ struct ComposerView: View {
             // A block with placeholders opens its field over the grid,
             // so an immediate flash would burn out unseen; it flashes
             // on the field's submit instead (see placeholderField).
-            if session.pending == nil { flash(block) }
+            if session.pending == nil { keyFlash.fire(block.key) }
             return .handled
         }
         return .ignored
@@ -882,8 +827,8 @@ extension View {
 struct KeyBadge: View {
     let theme: Theme
     let key: String
-    /// Wearing the just-pressed confirmation green (see
-    /// `ComposerView.flash`); the editor's list never lights it.
+    /// Wearing the just-pressed confirmation green (see `Flash`); the
+    /// editor's list never lights it.
     var flashed: Bool = false
 
     var body: some View {
@@ -893,9 +838,6 @@ struct KeyBadge: View {
             .foregroundStyle(tint)
             .frame(width: 22, height: 22)
             .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 5))
-            .overlay(
-                RoundedRectangle(cornerRadius: 5)
-                    .strokeBorder(tint.opacity(flashed ? 1 : 0), lineWidth: 1))
     }
 }
 
