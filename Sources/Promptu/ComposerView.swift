@@ -362,11 +362,14 @@ struct ComposerView: View {
         }
     }
 
-    /// One "key action" hint, two-tone: the key bright, the label dimmed.
-    private func hint(_ key: String, _ label: String) -> some View {
+    /// One "key action" hint, two-tone: the key bright, the label
+    /// dimmed — both knocked out to the panel background while the
+    /// hint's flash chip is lit, or neither would read on solid green.
+    private func hint(_ key: String, _ label: String, lit: Bool = false) -> some View {
         HStack(spacing: 3) {
-            hintKey(key)
-            Text(label).font(.caption).foregroundStyle(theme.dimmed)
+            hintKey(key, lit: lit)
+            Text(label).font(.caption)
+                .foregroundStyle(lit ? theme.background : theme.dimmed)
         }
     }
 
@@ -375,9 +378,9 @@ struct ComposerView: View {
     /// larger than the label beside them at the same size, which read as
     /// the rows using different font sizes. Weight and color still set
     /// the key apart from its label.
-    private func hintKey(_ key: String) -> some View {
+    private func hintKey(_ key: String, lit: Bool = false) -> some View {
         Text(key).font(.caption.bold())
-            .foregroundStyle(theme.foreground.opacity(0.8))
+            .foregroundStyle(lit ? theme.background : theme.foreground.opacity(0.8))
     }
 
     /// A hint that is also a clickable button. Like the keys it mirrors,
@@ -388,13 +391,14 @@ struct ComposerView: View {
         action: @escaping () -> Void
     ) -> some View {
         let available = enabled && !fieldShown
+        let lit = hintFlash.lit == key
         return Button {
             if available { action() }
         } label: {
-            hint(key, label)
+            hint(key, label, lit: lit)
         }
         .buttonStyle(HoverButtonStyle(theme: theme, horizontalPadding: 3))
-        .modifier(HintFlashChrome(theme: theme, lit: hintFlash.lit == key, available: available))
+        .modifier(HintFlashChrome(theme: theme, lit: lit, available: available))
     }
 
     /// A hint that is always available, unlike hintButton. Both use the
@@ -540,9 +544,10 @@ struct ComposerView: View {
         _ key: String, enabled: Bool, move: @escaping () -> Void
     ) -> some View {
         let available = enabled && !fieldShown
-        return Button { if available { move() } } label: { hintKey(key) }
+        let lit = hintFlash.lit == key
+        return Button { if available { move() } } label: { hintKey(key, lit: lit) }
             .buttonStyle(HoverButtonStyle(theme: theme, horizontalPadding: 3))
-            .modifier(HintFlashChrome(theme: theme, lit: hintFlash.lit == key, available: available))
+            .modifier(HintFlashChrome(theme: theme, lit: lit, available: available))
     }
 
     private func handleKey(_ press: KeyPress) -> KeyPress.Result {
@@ -832,12 +837,13 @@ struct KeyBadge: View {
     var flashed: Bool = false
 
     var body: some View {
-        let tint = flashed ? theme.success : theme.key
         Text(key)
             .font(.system(.body, design: .monospaced).bold())
-            .foregroundStyle(tint)
+            .foregroundStyle(flashed ? theme.background : theme.key)
             .frame(width: 22, height: 22)
-            .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 5))
+            .background(
+                flashed ? theme.success : theme.key.opacity(0.12),
+                in: RoundedRectangle(cornerRadius: 5))
     }
 }
 

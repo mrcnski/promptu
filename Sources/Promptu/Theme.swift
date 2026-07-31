@@ -29,7 +29,7 @@ struct Theme {
         placeholder: Color(hex: 0xFE640B),  // peach
         error: Color(hex: 0xD20F39),  // red
         notice: Color(hex: 0xDF8E1D),  // yellow
-        success: Color(hex: 0x2D7A1E))  // green, darkened
+        success: Color(hex: 0x40A02B))  // green
 
     /// Nimbus (dark).
     static let nimbus = Theme(

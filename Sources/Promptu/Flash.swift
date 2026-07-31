@@ -27,11 +27,11 @@ final class Flash: ObservableObject {
     }
 }
 
-/// The chrome shared by every flashing footer control: the success
-/// wash while lit, the disabled dim otherwise — with the dim held off
-/// through the flash, so a press that disables its own hint (the last
-/// ⌫, the final ⌘Z) shows its full-strength beat before the gray
-/// lands.
+/// The chrome shared by every flashing footer control: a solid
+/// success chip while lit, the disabled dim otherwise — with the dim
+/// held off through the flash, so a press that disables its own hint
+/// (the last ⌫, the final ⌘Z) shows its full-strength beat before
+/// the gray lands.
 struct HintFlashChrome: ViewModifier {
     let theme: Theme
     let lit: Bool
@@ -39,9 +39,7 @@ struct HintFlashChrome: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .background(
-                lit ? theme.success.opacity(0.15) : .clear,
-                in: RoundedRectangle(cornerRadius: 4))
+            .background(lit ? theme.success : .clear, in: RoundedRectangle(cornerRadius: 4))
             .opacity(available || lit ? 1 : 0.4)
             .allowsHitTesting(available)
     }
