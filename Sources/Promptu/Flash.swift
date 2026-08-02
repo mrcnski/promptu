@@ -9,7 +9,7 @@ import SwiftUI
 @MainActor
 final class Flash: ObservableObject {
     /// How long a flash holds before snapping back.
-    static let duration: TimeInterval = 0.3
+    static let duration: TimeInterval = 0.2
 
     @Published private(set) var lit: String?
     private var revert: DispatchWorkItem?
