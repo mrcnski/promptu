@@ -83,7 +83,7 @@ final class UpdateChecker: ObservableObject {
     /// reports it either way, and re-raising the banner from a button
     /// press elsewhere would surprise.
     func checkNow() {
-        guard enabled, status != .checking else { return }
+        guard enabled else { return }
         Task { await poll() }
     }
 
@@ -143,7 +143,14 @@ final class UpdateChecker: ObservableObject {
         return Update(version: latest, url: url)
     }
 
+    /// Fetch the latest release and cache it. A second call while one is
+    /// already in flight drops out: `lastCheckKey` is stamped only when a
+    /// check succeeds, so opening, closing and reopening the panel inside
+    /// a single request would otherwise clear the throttle again and fire
+    /// a redundant GitHub ping. Setting `status` before the first `await`,
+    /// on the main actor, is what makes the guard hold.
     private func poll() async {
+        guard status != .checking else { return }
         status = .checking
         var request = URLRequest(url: latestReleaseAPI)
         // GitHub rejects API calls without a User-Agent; the JSON header
