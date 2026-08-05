@@ -126,7 +126,9 @@ extension View {
     /// steers by.
     func scrollBarContent(_ content: Binding<CGRect>) -> some View {
         padding(.trailing, ScrollBarModifier.gutter)
-            .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(scrollBarSpace)) } action: {
+            .onGeometryChange(for: CGRect.self) {
+                $0.frame(in: .named(scrollBarSpace))
+            } action: {
                 content.wrappedValue = $0
             }
             .id(scrollBarContentID)

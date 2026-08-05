@@ -153,7 +153,8 @@ struct PromptPreview: View {
         // so it reads as lifted while it floats over them.
         .background(
             drag.draggingID == row.id ? theme.hover : .clear,
-            in: RoundedRectangle(cornerRadius: 4))
+            in: RoundedRectangle(cornerRadius: 4)
+        )
         .reorderFrame(row.id, in: Self.previewSpace)
         .offset(y: drag.offset(of: row.id, in: rowIDs, spacing: 0))
         .zIndex(drag.draggingID == row.id ? 1 : 0)

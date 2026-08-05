@@ -112,7 +112,8 @@ private struct HistoryRow: View {
         .padding(.vertical, 3)
         .background(
             selected || hovering ? theme.hover : .clear,
-            in: RoundedRectangle(cornerRadius: 4))
+            in: RoundedRectangle(cornerRadius: 4)
+        )
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .onTapGesture { session.recall(index) }

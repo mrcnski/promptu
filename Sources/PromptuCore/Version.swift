@@ -18,7 +18,8 @@ public enum Version {
     }
 
     private static func fields(_ version: String) -> [Int] {
-        let trimmed = version.hasPrefix("v") || version.hasPrefix("V")
+        let trimmed =
+            version.hasPrefix("v") || version.hasPrefix("V")
             ? String(version.dropFirst()) : version
         return trimmed.split(separator: ".").map { Int($0) ?? 0 }
     }

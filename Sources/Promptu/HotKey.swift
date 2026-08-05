@@ -81,7 +81,7 @@ final class HotKey {
             1, &eventType, Unmanaged.passUnretained(self).toOpaque(), &handlerRef)
         let status = RegisterEventHotKey(
             UInt32(keyCode), UInt32(modifiers),
-            EventHotKeyID(signature: OSType(0x504D5455), id: 1),  // "PMTU"
+            EventHotKeyID(signature: OSType(0x504D_5455), id: 1),  // "PMTU"
             GetApplicationEventTarget(), 0, &hotKeyRef)
         if status != noErr {
             NSLog("promptu: hotkey registration failed (OSStatus %d)", status)

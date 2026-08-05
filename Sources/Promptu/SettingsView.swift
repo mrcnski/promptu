@@ -29,7 +29,9 @@ struct SettingsView: View {
             Text("theme").font(.caption).foregroundStyle(theme.dimmed)
             HStack(spacing: 2) {
                 ForEach(ThemeChoice.allCases, id: \.self) { choice in
-                    Button { themeChoice = choice } label: {
+                    Button {
+                        themeChoice = choice
+                    } label: {
                         Text(choice.rawValue)
                             .font(choice == themeChoice ? .callout.bold() : .callout)
                             .foregroundStyle(choice == themeChoice ? theme.key : theme.dimmed)
@@ -66,7 +68,9 @@ struct SettingsView: View {
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(theme.surface, in: RoundedRectangle(cornerRadius: 5))
-                    Button { startRecording() } label: {
+                    Button {
+                        startRecording()
+                    } label: {
                         Text("change").font(.callout).foregroundStyle(theme.key)
                     }
                     .buttonStyle(HoverButtonStyle(theme: theme))
@@ -79,7 +83,9 @@ struct SettingsView: View {
             Text("launch at login").font(.caption).foregroundStyle(theme.dimmed)
             HStack(spacing: 2) {
                 ForEach([true, false], id: \.self) { on in
-                    Button { setLaunchAtLogin(on) } label: {
+                    Button {
+                        setLaunchAtLogin(on)
+                    } label: {
                         Text(on ? "on" : "off")
                             .font(on == launchAtLogin ? .callout.bold() : .callout)
                             .foregroundStyle(on == launchAtLogin ? theme.key : theme.dimmed)
@@ -100,7 +106,9 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 2) {
                     ForEach([true, false], id: \.self) { on in
-                        Button { session.setHistoryOn(on) } label: {
+                        Button {
+                            session.setHistoryOn(on)
+                        } label: {
                             Text(on ? "on" : "off")
                                 .font(on == session.historyOn ? .callout.bold() : .callout)
                                 .foregroundStyle(
@@ -142,7 +150,9 @@ struct SettingsView: View {
             Text("check for updates").font(.caption).foregroundStyle(theme.dimmed)
             HStack(spacing: 2) {
                 ForEach([true, false], id: \.self) { on in
-                    Button { updateChecker.setEnabled(on) } label: {
+                    Button {
+                        updateChecker.setEnabled(on)
+                    } label: {
                         Text(on ? "on" : "off")
                             .font(on == updateChecker.enabled ? .callout.bold() : .callout)
                             .foregroundStyle(
@@ -168,7 +178,9 @@ struct SettingsView: View {
                 Spacer()
                 // Grayed out rather than hidden while the check is off:
                 // off means no pings to GitHub, by hand or otherwise.
-                Button { updateChecker.checkNow() } label: {
+                Button {
+                    updateChecker.checkNow()
+                } label: {
                     Text("check now").font(.callout).foregroundStyle(theme.key)
                 }
                 .buttonStyle(HoverButtonStyle(theme: theme))
@@ -198,7 +210,9 @@ struct SettingsView: View {
         } else if updateChecker.status == .checking {
             statusText("checking…")
         } else if let update = updateChecker.latestKnown {
-            Button { NSWorkspace.shared.open(update.url) } label: {
+            Button {
+                NSWorkspace.shared.open(update.url)
+            } label: {
                 Text("v\(update.version) available →")
                     .font(.caption)
                     .foregroundStyle(theme.notice)

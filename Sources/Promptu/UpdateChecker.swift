@@ -168,7 +168,8 @@ final class UpdateChecker: ObservableObject {
         }
 
         // tag_name is "v0.4.0"; drop the v for comparison and display.
-        let version = release.tag_name.hasPrefix("v")
+        let version =
+            release.tag_name.hasPrefix("v")
             ? String(release.tag_name.dropFirst()) : release.tag_name
         defaults.set(Date.timeIntervalSinceReferenceDate, forKey: lastCheckKey)
         defaults.set(version, forKey: latestVersionKey)

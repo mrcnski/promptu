@@ -112,14 +112,18 @@ struct ComposerView: View {
     /// release on GitHub. Raised by the once-a-day update check.
     private func updateNotice(_ update: UpdateChecker.Update) -> some View {
         HStack(spacing: 6) {
-            Button { NSWorkspace.shared.open(update.url) } label: {
+            Button {
+                NSWorkspace.shared.open(update.url)
+            } label: {
                 Text("v\(update.version) available →")
                     .font(.caption.bold())
                     .foregroundStyle(theme.foreground)
             }
             .buttonStyle(HoverButtonStyle(theme: theme, horizontalPadding: 4))
             Spacer()
-            Button { updateChecker.dismiss() } label: {
+            Button {
+                updateChecker.dismiss()
+            } label: {
                 Text("✕").font(.caption).foregroundStyle(theme.dimmed)
             }
             .buttonStyle(HoverButtonStyle(theme: theme, horizontalPadding: 4))
@@ -133,7 +137,9 @@ struct ComposerView: View {
     }
 
     private func pageArrow(_ label: String, _ delta: Int) -> some View {
-        Button { if !fieldShown { session.cyclePage(delta) } } label: {
+        Button {
+            if !fieldShown { session.cyclePage(delta) }
+        } label: {
             Text(label).font(.caption2).foregroundStyle(theme.foreground.opacity(0.8))
         }
         .buttonStyle(HoverButtonStyle(theme: theme, horizontalPadding: 3))
@@ -543,9 +549,13 @@ struct ComposerView: View {
     ) -> some View {
         let available = enabled && !fieldShown
         let lit = hintFlash.lit == key
-        return Button { if available { move() } } label: { hintKey(key, lit: lit) }
-            .buttonStyle(HoverButtonStyle(theme: theme, horizontalPadding: 3))
-            .modifier(HintFlashChrome(theme: theme, lit: lit, available: available))
+        return Button {
+            if available { move() }
+        } label: {
+            hintKey(key, lit: lit)
+        }
+        .buttonStyle(HoverButtonStyle(theme: theme, horizontalPadding: 3))
+        .modifier(HintFlashChrome(theme: theme, lit: lit, available: available))
     }
 
     private func handleKey(_ press: KeyPress) -> KeyPress.Result {
@@ -617,8 +627,7 @@ struct ComposerView: View {
             }
         }
 
-        // ⌥↑/⌥↓ walk history in place — Emacs promptu's M-p/M-n. Plain
-        // ⌥ presses are free here: block keys reject every modifier.
+        // ⌥↑/⌥↓ walk history in place.
         if press.modifiers == [.option] {
             switch press.key {
             case .upArrow:
@@ -849,7 +858,8 @@ struct HoverButtonStyle: ButtonStyle {
                 .padding(.vertical, 3)
                 .background(
                     hovering ? theme.hover : .clear,
-                    in: RoundedRectangle(cornerRadius: 4))
+                    in: RoundedRectangle(cornerRadius: 4)
+                )
                 .contentShape(Rectangle())
                 .opacity(configuration.isPressed ? 0.6 : 1)
                 .onHover { hovering = $0 }

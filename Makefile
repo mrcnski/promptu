@@ -25,6 +25,9 @@ icon:
 run:
 	swift run
 
+format:
+	swift format -ir Sources/
+
 # The edit loop: rebuild and relaunch on every source change. Sweeps
 # up any earlier loop and stray instance first.
 #

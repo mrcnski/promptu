@@ -360,11 +360,12 @@ final class Session: ObservableObject {
         if let block, let index = blocks.firstIndex(of: block) {
             editorSelection = index
         }
-        draft = block.map {
-            Draft(
-                originalKey: $0.key, key: $0.key, desc: $0.desc,
-                text: $0.text, negative: $0.negative ?? "")
-        } ?? Draft()
+        draft =
+            block.map {
+                Draft(
+                    originalKey: $0.key, key: $0.key, desc: $0.desc,
+                    text: $0.text, negative: $0.negative ?? "")
+            } ?? Draft()
     }
 
     func cancelDraft() {
