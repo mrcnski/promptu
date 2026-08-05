@@ -148,8 +148,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     /// Editing shortcuts (⌘C, ⌘V, ⌘A, undo…) only work when a main menu
     /// defines their key equivalents, and a programmatic accessory app
-    /// starts with none. The menu is never shown; it exists purely to
-    /// route those keys to the focused text field.
+    /// starts with none.
+    ///
+    /// The menu is never shown; it exists purely to route those keys to the
+    /// focused text field.
     private func installEditMenu() {
         let edit = NSMenu(title: "Edit")
         edit.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
