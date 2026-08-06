@@ -2,8 +2,9 @@ import AppKit
 import Carbon.HIToolbox
 import Foundation
 
-/// The user's global hotkey, persisted in UserDefaults; ⌥⌘P until
-/// changed in the settings screen.
+/// The user's global hotkey, persisted in UserDefaults.
+///
+/// ⌥⌘P until changed in the settings screen.
 struct HotKeySpec: Equatable {
     var keyCode: Int
     /// Carbon modifier mask (cmdKey etc.), as RegisterEventHotKey wants.

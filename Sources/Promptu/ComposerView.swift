@@ -218,17 +218,8 @@ struct ComposerView: View {
         )
     }
 
-    /// Keys while a text field is focused. Emacs meta keys —
-    /// ⌥B/⌥F/⌥D/⌥⏎, or the ESC-prefixed pairs ESC b/f/d/⏎, ESC being
-    /// Emacs' meta prefix — are forwarded to the field editor. The ESC
-    /// prefix matters beyond habit: terminal-scoped remap tools
-    /// deliver exactly that pair for a physical ⌥B (Keyboard Maestro
-    /// types "Esc, b"), and they cannot see an LSUIElement app as
-    /// frontmost to stand down. A lone ESC still cancels the field
-    /// once the grace window passes; ESC ESC cancels immediately.
-    /// The field-editor selectors behind the meta keys: word motion
-    /// M-b/M-f/M-d, and M-⏎ inserting the newline that a plain Return
-    /// (submit) can't type.
+    /// Keys while a text field is focused. Emacs meta keys — ⌥B/⌥F/⌥D/⌥⏎, or
+    /// the ESC-prefixed pairs ESC b/f/d/⏎, are forwarded to the field editor.
     private nonisolated static let fieldCommands: [Character: Selector] = [
         "b": #selector(NSStandardKeyBindingResponding.moveWordBackward(_:)),
         "f": #selector(NSStandardKeyBindingResponding.moveWordForward(_:)),

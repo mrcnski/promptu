@@ -13,8 +13,8 @@ import SwiftUI
 struct PromptPreview: View {
     let entries: [String]
     let theme: Theme
-    /// The gap the point sits at, nil for no marker — a read-only
-    /// preview has no point to show.
+    /// The gap the point sits at, nil for no marker. A read-only
+    /// preview (like in the history view) has no point to show.
     var pointGap: Int?
     var emptyText = "empty prompt"
     /// Equal bounds pin the height: the history screen selects with the

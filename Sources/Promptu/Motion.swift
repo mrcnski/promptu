@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// The animations setting: when off, every animated change — the
-/// popover fade, reorder settles, edge fades — applies instantly.
+/// The animations setting: when off, every animated change applies instantly.
 enum Motion {
     private static let key = "disableAnimations"
 

@@ -1,4 +1,4 @@
-/// Pure prompt-composition rules, mirroring Emacs promptu's compose core.
+/// Pure prompt-composition rules.
 public enum Compose {
     public static let separator = "\n- "
     public static let negationPrefix = "don't "
