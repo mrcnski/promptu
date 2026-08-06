@@ -55,6 +55,7 @@ public struct Composition: Equatable, Sendable {
     /// Move the point to gap i, clamped to the entries; the end is
     /// stored as nil.
     public mutating func setPoint(_ i: Int) {
+        guard !entries.isEmpty else { return }
         point = i < entries.count ? max(0, i) : nil
     }
 
