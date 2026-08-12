@@ -17,9 +17,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private let session = Session()
     private let updateChecker = UpdateChecker()
     private var updateObserver: AnyCancellable?
-    /// A small dot on the status icon, shown while an update is
-    /// available, overlaid as a subview so the icon stays a template
-    /// image that tints with the menubar.
+    /// A small dot on the status icon, shown while an update is available.
+    /// Overlaid as a subview so the icon stays a template image that tints with
+    /// the menubar.
     private let updateDot: NSView = {
         let dot = NSView(frame: NSRect(x: 0, y: 0, width: 6, height: 6))
         dot.wantsLayer = true
@@ -29,23 +29,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         dot.isHidden = true
         return dot
     }()
-    /// Set while close() waits out the popover's close animation: the
-    /// app hides — handing focus back — only once it has played,
-    /// where hiding immediately would cut it to a blink.
+    /// True from close() until its close lands. Read twice: the deactivation
+    /// observer uses it to ignore the resign that close()'s own focus handoff
+    /// causes, and popoverDidClose hides the app when it is set (the focus
+    /// fallback for when no previous app is left to activate).
     private var hideWhenClosed = false
     /// The app frontmost before open() stole activation, so close()
     /// can hand focus straight back without waiting out the fade.
     private var previousApp: NSRunningApplication?
-    /// Closes the panel on a click in another app, installed while the
-    /// popover shows. Transient behavior covers most outside clicks,
-    /// but not the status bar: a click there deactivates nobody, so
-    /// opening another menubar app left the panel hanging open under
-    /// it. The documented contract says a global monitor sees only
-    /// other processes' clicks — but in the wild (macOS 15) it also
-    /// receives some of Promptu's own: panel clicks arrived carrying
-    /// the panel's own window number and closed it under the user.
-    /// The handler must therefore drop events aimed at our windows.
+    /// Closes the panel on a click in another app, installed while the popover
+    /// shows. Drop events aimed at our windows.
     private var clickMonitor: Any?
+    /// The close fade currently in flight, nil when none is. The value is that
+    /// fade's identity. The fade's completion closes the popover only while
+    /// its own id is still stored here, so a fade that open() cancelled (nil)
+    /// or that a newer close replaced (different id) closes nothing.
+    private var closeFade: UUID?
+    /// One duration for both fading in and out, so a reversal reads as the same
+    /// motion played in the other direction.
+    private static let fadeDuration: TimeInterval = 0.2
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // LSUIElement covers bundled runs; this also covers `swift run`.
@@ -57,10 +59,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         UserDefaults.standard.set(100_000, forKey: "NSTextInsertionPointBlinkPeriodOn")
         UserDefaults.standard.set(0, forKey: "NSTextInsertionPointBlinkPeriodOff")
 
-        // Tooltips on hover rather than after the system's multi-second
-        // dwell. A tooltip here explains a control the user is already
-        // pointing at; waiting that long reads as nothing happening.
-        // Their fade-out is drawn by the system and can't be tuned.
+        // Tooltips on hover rather than after the system's multi-second dwell.
         UserDefaults.standard.set(150, forKey: "NSInitialToolTipDelay")
 
         installEditMenu()
@@ -82,22 +81,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             self?.updateDot.isHidden = update == nil
         }
 
-        // .applicationDefined, not .transient: every close is a line
-        // of ours. Transient's hidden machinery was a second actor in
-        // the status-click races — it can close the panel mid-click,
-        // and no guard on our side can see or veto it. Its two real
-        // services are replaced explicitly: deactivation (clicking
-        // into another app) closes via the observer below, and
-        // menubar clicks — which deactivate nobody — via the click
-        // monitor (see clickMonitor).
+        // .applicationDefined, not .transient: every close is a line of ours.
+        // Transient's hidden machinery was a second actor in the status-click
+        // races. It could close the panel mid-click, and no guard on our side
+        // could see or veto it.
         popover.behavior = .applicationDefined
+        // The popover's built-in animations are never used. They were opaque
+        // and uninterruptible, so a press mid-animation would have to wait them
+        // out. Both fades are instead drawn by hand on the window's alpha.
+        //
+        // Side effect: with animates off, performClose is instant and its
+        // delegate callbacks run synchronously.
+        popover.animates = false
         popover.delegate = self
         let hosting = NSHostingController(
             rootView: ComposerView(session: session, updateChecker: updateChecker) {
                 [weak self] in self?.close()
             })
-        // Track the SwiftUI ideal size, so the popover grows and shrinks
-        // with the preview instead of staying at its first-shown size.
+        // Track the SwiftUI ideal size, so the popover grows and shrinks with
+        // the preview instead of staying at its first-shown size.
         hosting.sizingOptions = .preferredContentSize
         popover.contentViewController = hosting
 
@@ -114,20 +116,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             MainActor.assumeIsolated { self?.applyThemeAppearance() }
         }
 
-        // One half of what .transient used to do: clicking into
-        // another app deactivates Promptu — fold the panel. No hide:
-        // focus already went where the click did. Hiding on our own
-        // close (hideWhenClosed) fires this too, against an
-        // already-closed popover, which performClose ignores.
+        // Clicking into another app deactivates Promptu, folding the panel.
+        // Don't hide here: focus already went where the click did. Hiding on
+        // our own close (hideWhenClosed) fires this too.
         NotificationCenter.default.addObserver(
             forName: NSApplication.didResignActiveNotification, object: nil, queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated {
-                // close()'s focus handoff resigns us too, mid-fade;
-                // that close is already in flight (hideWhenClosed), so
-                // stand down rather than re-enter performClose.
+                // close() hands focus away mid-fade, which resigns us too.
+                // That close is already running (hideWhenClosed), so don't
+                // start a second one.
                 guard let self, self.popover.isShown, !self.hideWhenClosed else { return }
-                self.popover.performClose(nil)
+                self.fadeOutAndClose()
             }
         }
 
@@ -205,9 +205,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     }
 
     /// (Re)register the global hotkey from its saved setting. The old
-    /// registration must go first: registering a combination that is
-    /// still registered fails, and the stale one would then unregister
-    /// on release — leaving no hotkey at all.
+    /// registration must unregister first: registering a combination that is
+    /// still registered fails, and the stale one would then unregister on
+    /// release.
     private func registerHotKey() {
         hotKey = nil
         let spec = HotKeySpec.load()
@@ -216,28 +216,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         }
     }
 
-    /// Treat a popover that claims to be shown but has no visible
-    /// window as closed: reopening clears the wedge (seen once in the
-    /// wild — show succeeded invisibly and every other press then
-    /// toggled a phantom), where closing it would just hide the app.
+    /// Treat a popover that claims to be shown but has no visible window as
+    /// closed. Reopening clears the wedge, where closing it would just hide the
+    /// app.
     private var visiblyShown: Bool {
         let win = popover.contentViewController?.view.window
         return popover.isShown && (win?.isVisible ?? false)
     }
 
     @objc private func toggle() {
-        visiblyShown ? close() : open()
+        // A panel mid-close-fade still reads as shown, but the press means
+        // "bring it back": treat it as closed, and open() will reverse the
+        // fade instead of re-showing.
+        visiblyShown && closeFade == nil ? close() : open()
     }
 
-    /// A popover closed while the settings recorder was capturing (a
-    /// click outside, say) never runs the recorder's cleanup, which
-    /// would leave the hotkey suspended for good. Re-registering is
-    /// cheap and idempotent, so just always do it on close.
+    /// A popover closed while the settings recorder was capturing (a click
+    /// outside, say) never runs the recorder's cleanup, which would leave the
+    /// hotkey suspended for good. Re-registering is cheap, so just always do it
+    /// on close.
     ///
-    /// Deferred to the next runloop turn: with animations off this
-    /// delegate fires synchronously inside the hotkey's own Carbon
-    /// dispatch, and re-registering there would RemoveEventHandler on
-    /// the handler still executing — killing the hotkey after one use.
+    /// Deferred to the next runloop turn. With animations off, this delegate
+    /// fires synchronously inside the hotkey's own Carbon dispatch, and
+    /// re-registering there would RemoveEventHandler on the handler still
+    /// executing, killing the hotkey after one use.
     func popoverDidClose(_ notification: Notification) {
         if let clickMonitor {
             NSEvent.removeMonitor(clickMonitor)
@@ -246,22 +248,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         let hide = hideWhenClosed
         hideWhenClosed = false
         DispatchQueue.main.async { [weak self] in
-            self?.registerHotKey()
-            self?.updateChecker.panelDidClose()
+            guard let self else { return }
+            self.registerHotKey()
+            // open()'s wedge recovery closes and re-shows within one turn, so
+            // the panel can be open again by the time this runs.
+            guard !self.popover.isShown else { return }
+            self.updateChecker.panelDidClose()
             if hide { NSApp.hide(nil) }
         }
     }
 
     private func open() {
         guard let button = statusItem.button else { return }
-        // Re-read per open/close, so the settings toggle applies live.
-        popover.animates = Motion.enabled
         updateChecker.panelWillOpen()
-        // A wedged (shown-but-invisible) popover must be fully closed
-        // before show, or show is a no-op against the phantom.
-        if popover.isShown { popover.performClose(nil) }
-        // Remember who had focus — but never Promptu itself, or a
-        // wedge-recovery re-open would hand focus back to us.
+        // This open supersedes any close in flight.
+        hideWhenClosed = false
+        if closeFade != nil {
+            // Reopening in the middle of a close-fade. Cancel the fade's
+            // pending close and let the fade-in below reverse the alpha back
+            // up.
+            closeFade = nil
+        } else if popover.isShown {
+            // A wedged popover (claims shown, no visible window) must be closed
+            // for real first.
+            popover.close()
+        }
+        // Remember who had focus. Never Promptu itself, or a wedge-recovery
+        // re-open would hand focus back to us.
         if let front = NSWorkspace.shared.frontmostApplication,
             front.processIdentifier != ProcessInfo.processInfo.processIdentifier
         {
@@ -276,8 +289,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         // works.
         NSApp.unhide(nil)
         NSApp.activate(ignoringOtherApps: true)
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-        popover.contentViewController?.view.window?.makeKey()
+        if !popover.isShown {
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            // Start the fade-in from nothing. Zeroing here cannot flash:
+            // show() created the window this turn, but it reaches the screen
+            // only after the turn ends, so no frame was ever drawn opaque.
+            if Motion.enabled {
+                popover.contentViewController?.view.window?.alphaValue = 0
+            }
+        }
+        if let window = popover.contentViewController?.view.window {
+            if Motion.enabled {
+                // Fade in from wherever the alpha stands: zero on a fresh
+                // show, partway up when reversing a close fade in flight.
+                NSAnimationContext.runAnimationGroup { context in
+                    context.duration = Self.fadeDuration
+                    window.animator().alphaValue = 1
+                }
+            } else {
+                // A closed window rests transparent (see fadeOutAndClose);
+                // without this it would come up invisible.
+                window.alphaValue = 1
+            }
+            window.makeKey()
+        }
         if clickMonitor == nil {
             clickMonitor = NSEvent.addGlobalMonitorForEvents(
                 matching: [.leftMouseDown, .rightMouseDown]
@@ -302,28 +337,46 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
                         {
                             return
                         }
-                        self.popover.performClose(nil)
+                        self.fadeOutAndClose()
                     }
                 }
             }
         }
     }
 
-    /// Closes the panel and hands focus back to the previous app, so a
-    /// finished prompt can be pasted immediately. Focus moves the
-    /// moment the close begins: activating the previous app leaves the
-    /// fade running, where waiting for the animation's end (the old
-    /// deferred-hide route) left a beat of dead time after the panel
-    /// was visually gone. The deferred hide in popoverDidClose stays
-    /// as the fallback for when no previous app survives to take
-    /// focus — hiding *here* instead would cut the fade to a blink.
+    /// Closes the panel and hands focus back to the previous app, so a finished
+    /// prompt can be pasted immediately. The deferred hide in popoverDidClose
+    /// stays as the fallback for when no previous app survives to take focus.
     private func close() {
         guard popover.isShown else { return NSApp.hide(nil) }
-        popover.animates = Motion.enabled
         hideWhenClosed = true
-        popover.performClose(nil)
+        fadeOutAndClose()
         if let previousApp, !previousApp.isTerminated {
             previousApp.activate()
+        }
+    }
+
+    /// The shared exit for every close path: fade the window out, then close
+    /// the popover for real. The fade starts from the current alpha, so closing
+    /// mid-fade-in reverses that motion instead of snapping.
+    private func fadeOutAndClose() {
+        guard Motion.enabled, let window = popover.contentViewController?.view.window else {
+            return popover.performClose(nil)
+        }
+        let fade = UUID()
+        closeFade = fade
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = Self.fadeDuration
+            window.animator().alphaValue = 0
+        } completionHandler: { [weak self] in
+            // Close on the animation's own completion — a parallel timer can
+            // fire a frame early and close at alpha ~0.1, a visible cut. The
+            // guard is the cancellation: see closeFade.
+            MainActor.assumeIsolated {
+                guard let self, self.closeFade == fade else { return }
+                self.closeFade = nil
+                self.popover.performClose(nil)
+            }
         }
     }
 }
